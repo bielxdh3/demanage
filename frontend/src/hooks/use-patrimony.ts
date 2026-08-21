@@ -72,6 +72,7 @@ export function usePatrimonySettings() {
   return useQuery({
     queryKey: [...PATRIMONY_QUERY_KEY, 'settings'],
     queryFn: getPatrimonySettings,
+    initialData: null,
   });
 }
 
