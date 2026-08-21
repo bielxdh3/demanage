@@ -85,9 +85,14 @@ export function useSavePatrimonySettings() {
   });
 }
 
-export function usePatrimonyHistory(from?: string, to?: string) {
+export function usePatrimonyHistory(
+  from?: string,
+  to?: string,
+  enabled = true,
+) {
   return useQuery({
     queryKey: [...PATRIMONY_QUERY_KEY, 'history', from, to],
     queryFn: () => getPatrimonyHistory(from, to),
+    enabled,
   });
 }
