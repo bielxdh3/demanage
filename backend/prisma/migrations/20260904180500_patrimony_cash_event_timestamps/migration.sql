@@ -1,0 +1,2 @@
+ALTER TABLE "Expense" ADD COLUMN "paidAt" TIMESTAMP(3);
+ALTER TABLE "Entry" ADD COLUMN "receivedAt" TIMESTAMP(3);
