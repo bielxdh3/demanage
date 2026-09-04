@@ -1,26 +1,37 @@
-import { useId, useMemo } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { useMemo } from 'react';
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 
-import { Spinner } from '@/components/ui/spinner';
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartConfig,
 } from '@/components/ui/chart';
-import type { ChartConfig } from '@/components/ui/chart';
 import { formatCurrency } from '@/lib/format';
-import type { Asset } from '@/types/patrimony';
 
 type ChartRow = {
   date: string;
-  valor: number;
+  patrimonio: number;
+  cdi: number;
+  ipca: number;
 };
 
-type CurrencyHistoryChartProps = {
-  asset: Asset;
-  data: ChartRow[];
-  isLoading?: boolean;
-};
+const chartConfig = {
+  patrimonio: {
+    label: 'Patrimônio',
+    color: 'var(--chart-2)',
+  },
+  cdi: {
+    label: '100% CDI',
+    color: 'var(--chart-3)',
+  },
+  ipca: {
+    label: 'IPCA',
+    color: 'var(--chart-1)',
+  },
+} satisfies ChartConfig;
 
 function formatAxisDate(value: string) {
   const [month, day] = value.split('-');
@@ -58,67 +69,35 @@ function paddedYDomain(values: number[]): [number, number] {
   return [min - pad * 0.45, max + pad];
 }
 
-export function CurrencyHistoryChart({
-  asset,
-  data,
-  isLoading = false,
-}: CurrencyHistoryChartProps) {
-  const gradientId = `fill-valor-${useId().replace(/:/g, '')}`;
-  const seriesLabel = asset === 'BTC' ? 'Bitcoin' : 'Dólar';
-  const chartConfig = useMemo(
-    () =>
-      ({
-        valor: {
-          label: seriesLabel,
-          color: asset === 'BTC' ? 'var(--chart-1)' : 'var(--chart-2)',
-        },
-      }) satisfies ChartConfig,
-    [asset, seriesLabel],
-  );
+export function PatrimonyHistoryChart({ data }: { data: ChartRow[] }) {
   const yDomain = useMemo(
-    () => paddedYDomain(data.map((row) => row.valor)),
+    () =>
+      paddedYDomain(
+        data.flatMap((row) => [row.patrimonio, row.cdi, row.ipca]),
+      ),
     [data],
   );
 
-  if (isLoading) {
-    return (
-      <div className='flex h-72 items-center justify-center'>
-        <Spinner className='size-5' />
-      </div>
-    );
-  }
-
   if (data.length === 0) {
     return (
-      <div className='flex h-72 items-center justify-center px-6 text-center'>
+      <div className='flex h-[360px] items-center justify-center px-6 text-center'>
         <p className='text-sm text-muted-foreground'>
-          Sem histórico de cotação neste período.
+          Sem histórico patrimonial neste período.
         </p>
       </div>
     );
   }
 
   return (
-    <ChartContainer config={chartConfig} className='h-72 w-full aspect-auto'>
-      <AreaChart
+    <ChartContainer
+      config={chartConfig}
+      className='h-[360px] w-full aspect-auto'
+    >
+      <LineChart
         accessibilityLayer
         data={data}
         margin={{ top: 16, right: 8, left: 4, bottom: 0 }}
       >
-        <defs>
-          <linearGradient id={gradientId} x1='0' y1='0' x2='0' y2='1'>
-            <stop
-              offset='5%'
-              stopColor='var(--color-valor)'
-              stopOpacity={0.45}
-            />
-            <stop
-              offset='95%'
-              stopColor='var(--color-valor)'
-              stopOpacity={0.04}
-            />
-          </linearGradient>
-        </defs>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey='date'
@@ -143,9 +122,12 @@ export function CurrencyHistoryChart({
             <ChartTooltipContent
               indicator='line'
               labelFormatter={(value) => formatAxisDate(String(value))}
-              formatter={(value) => (
+              formatter={(value, name) => (
                 <div className='flex w-full items-center justify-between gap-4'>
-                  <span className='text-muted-foreground'>{seriesLabel}</span>
+                  <span className='text-muted-foreground'>
+                    {chartConfig[name as keyof typeof chartConfig]?.label ??
+                      String(name)}
+                  </span>
                   <span className='font-medium tabular-nums text-foreground'>
                     {formatCurrency(Number(value))}
                   </span>
@@ -154,18 +136,35 @@ export function CurrencyHistoryChart({
             />
           }
         />
-        <Area
-          dataKey='valor'
-          name={seriesLabel}
+        <ChartLegend content={<ChartLegendContent />} />
+        <Line
+          dataKey='patrimonio'
+          name='patrimonio'
           type='monotone'
-          fill={`url(#${gradientId})`}
-          stroke='var(--color-valor)'
+          stroke='var(--color-patrimonio)'
           strokeWidth={2}
           dot={false}
           activeDot={{ r: 4 }}
-          className={asset === 'BTC' ? 'neon-line-amber' : 'neon-line-green'}
         />
-      </AreaChart>
+        <Line
+          dataKey='cdi'
+          name='cdi'
+          type='monotone'
+          stroke='var(--color-cdi)'
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4 }}
+        />
+        <Line
+          dataKey='ipca'
+          name='ipca'
+          type='monotone'
+          stroke='var(--color-ipca)'
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4 }}
+        />
+      </LineChart>
     </ChartContainer>
   );
 }
