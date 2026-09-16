@@ -71,6 +71,7 @@ services:
 
 volumes:
   demanage_pgdata:
+    name: demanage_pgdata
 
 networks:
   demanage:
