@@ -13,13 +13,7 @@ $containerPath = '/tmp/demanage-backup.dump'
 New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
 
 try {
-  docker exec demanage-db pg_dump \
-    -U demanage \
-    -d demanage \
-    --format=custom \
-    --no-owner \
-    --no-privileges \
-    --file=$containerPath
+  docker exec demanage-db pg_dump -U demanage -d demanage --format=custom --no-owner --no-privileges --file=$containerPath
 
   if ($LASTEXITCODE -ne 0) {
     throw 'pg_dump falhou.'
