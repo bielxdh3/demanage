@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { ENTRIES_QUERY_KEY } from '@/hooks/use-entries';
 import { EXPENSES_QUERY_KEY } from '@/hooks/use-expenses';
 import { PATRIMONY_QUERY_KEY } from '@/hooks/query-keys';
+import { shouldRetryReadRequest } from '@/lib/query-retry';
 import {
   archivePiggyBank,
   createPiggyBank,
@@ -20,18 +21,22 @@ import {
 
 export const PIGGY_BANKS_QUERY_KEY = ['piggy-banks'] as const;
 
+// Each authentication session has a distinct QueryClient. Do not run costly
+// daily accrual/autodebit once for every hook observer or route visit.
+const maintenanceStartedForSession = new WeakSet<ReturnType<typeof useQueryClient>>();
+
 export function usePiggyBanks(includeArchived = false) {
   const queryClient = useQueryClient();
-  const maintenanceStarted = useRef(false);
   const query = useQuery({
     queryKey: [...PIGGY_BANKS_QUERY_KEY, { includeArchived }],
     queryFn: () => listPiggyBanks(includeArchived),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    retry: shouldRetryReadRequest,
   });
 
   useEffect(() => {
-    if (!query.isSuccess || maintenanceStarted.current) return;
-    maintenanceStarted.current = true;
+    if (!query.isSuccess || maintenanceStartedForSession.has(queryClient)) return;
+    maintenanceStartedForSession.add(queryClient);
 
     void processPiggyAutoDebit()
       .then((result) => {
@@ -66,6 +71,8 @@ export function usePiggyTransactions(piggyBankId: string | null) {
     queryKey: [...PIGGY_BANKS_QUERY_KEY, piggyBankId, 'transactions'],
     queryFn: () => listPiggyTransactions(piggyBankId as string),
     enabled: Boolean(piggyBankId),
+    staleTime: 60_000,
+    retry: shouldRetryReadRequest,
   });
 }
 
