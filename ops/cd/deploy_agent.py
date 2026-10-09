@@ -370,7 +370,7 @@ def apply(
     validate_compose(config, overlay, check_runtime=not rollback)
     # NEVER invoke down, up on db/tunnel, --build, prune or volume commands.
     invoke(compose_command(config, overlay) + [
-        "up", "--detach", "--no-deps", "--no-build", "backend", "frontend"
+        "up", "--detach", "--no-deps", "--no-build", "--pull", "never", "backend", "frontend"
     ])
 
 
