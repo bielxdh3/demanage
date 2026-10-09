@@ -174,6 +174,38 @@ def compose_model(config: dict, overlay: Path | None = None) -> dict:
     )
 
 
+def expected_runtime_networks(model: dict, service: dict) -> set[str]:
+    attached = service.get("networks", {})
+    names = attached if isinstance(attached, list) else attached.keys()
+    networks = model.get("networks", {})
+    return {networks.get(key, {}).get("name", key) for key in names}
+
+
+def expected_port_bindings(service: dict) -> list[tuple[str, str, str]]:
+    bindings = []
+    for port in service.get("ports") or []:
+        if not isinstance(port, dict):
+            raise RuntimeError("Compose ports must be expanded in config JSON")
+        if port.get("published") is None:
+            raise RuntimeError("Refusing dynamically published ports")
+        target = f"{port['target']}/{port.get('protocol', 'tcp')}"
+        host = port.get("host_ip") or "0.0.0.0"
+        bindings.append((target, str(host), str(port["published"])))
+    return sorted(bindings)
+
+
+def actual_port_bindings(container: dict) -> list[tuple[str, str, str]]:
+    bindings = []
+    for port, entries in (container["HostConfig"].get("PortBindings") or {}).items():
+        for entry in entries or []:
+            bindings.append((
+                port,
+                entry.get("HostIp") or "0.0.0.0",
+                entry.get("HostPort") or "",
+            ))
+    return sorted(bindings)
+
+
 def validate_compose(config: dict, overlay: Path | None = None) -> None:
     original = compose_model(config)
     services = original.get("services", {})
@@ -188,9 +220,26 @@ def validate_compose(config: dict, overlay: Path | None = None) -> None:
         if services[name].get("container_name") != container:
             raise RuntimeError(f"Unexpected container name for {name}")
         running = invoke(compose_command(config) + ["ps", "-q", name])
-        actual = docker_inspect(container)["Id"]
+        actual_container = docker_inspect(container)
+        actual = actual_container["Id"]
         if not running or not actual.startswith(running):
             raise RuntimeError(f"{name} is not managed by the selected Compose project")
+        labels = actual_container["Config"].get("Labels") or {}
+        if (
+            labels.get("com.docker.compose.project") != "demanage"
+            or labels.get("com.docker.compose.service") != name
+        ):
+            raise RuntimeError(f"{name} has unexpected Compose ownership labels")
+        configured_networks = expected_runtime_networks(original, services[name])
+        actual_networks = set(actual_container["NetworkSettings"]["Networks"])
+        if configured_networks != actual_networks:
+            raise RuntimeError(
+                f"{name} runtime Docker networks disagree with selected Compose"
+            )
+        if expected_port_bindings(services[name]) != actual_port_bindings(actual_container):
+            raise RuntimeError(
+                f"{name} host port bindings disagree with selected Compose"
+            )
     if overlay is None:
         return
 
