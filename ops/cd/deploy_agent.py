@@ -206,7 +206,9 @@ def actual_port_bindings(container: dict) -> list[tuple[str, str, str]]:
     return sorted(bindings)
 
 
-def validate_compose(config: dict, overlay: Path | None = None) -> None:
+def validate_compose(
+    config: dict, overlay: Path | None = None, *, check_runtime: bool = True
+) -> None:
     original = compose_model(config)
     services = original.get("services", {})
     if not {"db", "frontend", "backend"}.issubset(services):
@@ -219,27 +221,28 @@ def validate_compose(config: dict, overlay: Path | None = None) -> None:
     for name, container in expected_names.items():
         if services[name].get("container_name") != container:
             raise RuntimeError(f"Unexpected container name for {name}")
-        running = invoke(compose_command(config) + ["ps", "-q", name])
-        actual_container = docker_inspect(container)
-        actual = actual_container["Id"]
-        if not running or not actual.startswith(running):
-            raise RuntimeError(f"{name} is not managed by the selected Compose project")
-        labels = actual_container["Config"].get("Labels") or {}
-        if (
-            labels.get("com.docker.compose.project") != "demanage"
-            or labels.get("com.docker.compose.service") != name
-        ):
-            raise RuntimeError(f"{name} has unexpected Compose ownership labels")
-        configured_networks = expected_runtime_networks(original, services[name])
-        actual_networks = set(actual_container["NetworkSettings"]["Networks"])
-        if configured_networks != actual_networks:
-            raise RuntimeError(
-                f"{name} runtime Docker networks disagree with selected Compose"
-            )
-        if expected_port_bindings(services[name]) != actual_port_bindings(actual_container):
-            raise RuntimeError(
-                f"{name} host port bindings disagree with selected Compose"
-            )
+        if check_runtime:
+            running = invoke(compose_command(config) + ["ps", "-q", name])
+            actual_container = docker_inspect(container)
+            actual = actual_container["Id"]
+            if not running or not actual.startswith(running):
+                raise RuntimeError(f"{name} is not managed by the selected Compose project")
+            labels = actual_container["Config"].get("Labels") or {}
+            if (
+                labels.get("com.docker.compose.project") != "demanage"
+                or labels.get("com.docker.compose.service") != name
+            ):
+                raise RuntimeError(f"{name} has unexpected Compose ownership labels")
+            configured_networks = expected_runtime_networks(original, services[name])
+            actual_networks = set(actual_container["NetworkSettings"]["Networks"])
+            if configured_networks != actual_networks:
+                raise RuntimeError(
+                    f"{name} runtime Docker networks disagree with selected Compose"
+                )
+            if expected_port_bindings(services[name]) != actual_port_bindings(actual_container):
+                raise RuntimeError(
+                    f"{name} host port bindings disagree with selected Compose"
+                )
     if overlay is None:
         return
 
@@ -360,9 +363,11 @@ def write_overlay(folder: Path, images: dict) -> Path:
     return file
 
 
-def apply(config: dict, images: dict, folder: Path) -> None:
+def apply(
+    config: dict, images: dict, folder: Path, *, rollback: bool = False
+) -> None:
     overlay = write_overlay(folder, images)
-    validate_compose(config, overlay)
+    validate_compose(config, overlay, check_runtime=not rollback)
     # NEVER invoke down, up on db/tunnel, --build, prune or volume commands.
     invoke(compose_command(config, overlay) + [
         "up", "--detach", "--no-deps", "--no-build", "backend", "frontend"
@@ -421,7 +426,7 @@ def deploy(config: dict, release: dict, state: dict) -> None:
     except Exception:
         print("Deployment failed: attempting application-only rollback", file=sys.stderr)
         try:
-            apply(config, rollback_refs, workdir)
+            apply(config, rollback_refs, workdir, rollback=True)
             if not wait_healthy(config, previous_images):
                 raise RuntimeError("Rollback healthcheck did not pass")
             if db_identity() != before_db:
