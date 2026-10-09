@@ -1,9 +1,15 @@
 // Node test runners do not inject Vite's import.meta.env object.
-const viteEnv = import.meta.env;
-const configuredApiUrl = viteEnv?.VITE_API_URL as string | undefined;
+const configuredApiUrl =
+  typeof import.meta.env === 'undefined'
+    ? undefined
+    : (import.meta.env.VITE_API_URL as string | undefined);
 const DEFAULT_API_URL = 'http://localhost:8888';
 
-if (viteEnv?.PROD && !configuredApiUrl?.trim()) {
+if (
+  typeof import.meta.env !== 'undefined' &&
+  import.meta.env.PROD &&
+  !configuredApiUrl?.trim()
+) {
   throw new Error(
     '[deManage] VITE_API_URL is required in production builds. Set it in the frontend env.',
   );
@@ -36,7 +42,11 @@ function isPrivateIpv4Hostname(hostname: string) {
 }
 
 function resolveApiUrl(value: string) {
-  if (!viteEnv?.DEV || typeof window === 'undefined') {
+  if (
+    typeof import.meta.env === 'undefined' ||
+    !import.meta.env.DEV ||
+    typeof window === 'undefined'
+  ) {
     return value.replace(/\/$/, '');
   }
 
