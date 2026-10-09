@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "source_commit": "83488ef75d426688fda06feb2333af58c87ad569",
+  "previous_commit": "b70d556e28832400d1ae07ee7f2d94218736195f",
+  "backend": "ghcr.io/bielxdh3/demanage-backend@sha256:61a84cf864f7f29546e1e92a0146e410a79c2441233d8b046106b695811e4a5d",
+  "frontend": "ghcr.io/bielxdh3/demanage-frontend@sha256:6761c8a6d46624ddf0e9683905b40bd5fee1f78a5eb712402efc6f862cd732c0",
+  "approved_by": "bielxdh3",
+  "approved_at": "2026-10-09T19:48:11Z"
+}
