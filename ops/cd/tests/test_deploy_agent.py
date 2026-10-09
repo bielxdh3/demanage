@@ -59,5 +59,37 @@ class ManifestValidationTest(unittest.TestCase):
             agent.validate_release(item)
 
 
+
+class RuntimeTopologyTest(unittest.TestCase):
+    def test_no_port_bindings_for_private_services(self):
+        service = {'ports': []}
+        container = {'HostConfig': {'PortBindings': {}}}
+        self.assertEqual(agent.expected_port_bindings(service), [])
+        self.assertEqual(agent.actual_port_bindings(container), [])
+
+    def test_detect_unexpected_host_port_exposure(self):
+        service = {
+            'ports': [
+                {'target': 80, 'published': '8080', 'protocol': 'tcp', 'host_ip': '127.0.0.1'}
+            ]
+        }
+        container = {'HostConfig': {'PortBindings': {}}}
+        self.assertNotEqual(
+            agent.expected_port_bindings(service),
+            agent.actual_port_bindings(container),
+        )
+
+    def test_require_matching_docker_network(self):
+        model = {'networks': {'demanage': {'name': 'demanage_demanage'}}}
+        self.assertEqual(
+            agent.expected_runtime_networks(model, {'networks': {'demanage': None}}),
+            {'demanage_demanage'},
+        )
+
+    def test_reject_dynamic_port_bindings(self):
+        with self.assertRaises(RuntimeError):
+            agent.expected_port_bindings({'ports': [{'target': 80}]})
+
+
 if __name__ == '__main__':
     unittest.main()
