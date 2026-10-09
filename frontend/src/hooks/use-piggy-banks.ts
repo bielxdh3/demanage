@@ -25,17 +25,18 @@ export const PIGGY_BANKS_QUERY_KEY = ['piggy-banks'] as const;
 // daily accrual/autodebit once for every hook observer or route visit.
 const maintenanceStartedForSession = new WeakSet<ReturnType<typeof useQueryClient>>();
 
-export function usePiggyBanks(includeArchived = false) {
+export function usePiggyBanks(includeArchived = false, enabled = true) {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: [...PIGGY_BANKS_QUERY_KEY, { includeArchived }],
     queryFn: () => listPiggyBanks(includeArchived),
+    enabled,
     staleTime: 60_000,
     retry: shouldRetryReadRequest,
   });
 
   useEffect(() => {
-    if (!query.isSuccess || maintenanceStartedForSession.has(queryClient)) return;
+    if (!enabled || !query.isSuccess || maintenanceStartedForSession.has(queryClient)) return;
     maintenanceStartedForSession.add(queryClient);
 
     void processPiggyAutoDebit()
@@ -61,7 +62,7 @@ export function usePiggyBanks(includeArchived = false) {
       .catch(() => {
         toast.error('Não foi possível atualizar os Cofrinhos agora.');
       });
-  }, [query.isSuccess, queryClient]);
+  }, [enabled, query.isSuccess, queryClient]);
 
   return query;
 }
