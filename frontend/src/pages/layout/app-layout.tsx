@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { AppSidebar } from '@/components/layout/app-sidebar';
@@ -6,13 +6,15 @@ import { AppTopbar } from '@/components/layout/app-topbar';
 import { useCards } from '@/hooks/use-cards';
 import { useEntries } from '@/hooks/use-entries';
 import { useExpenses } from '@/hooks/use-expenses';
-import { usePiggyBanks } from '@/hooks/use-piggy-banks';
 
 export function AppLayout() {
-  useCards();
-  useEntries();
-  useExpenses();
-  usePiggyBanks();
+  const { pathname } = useLocation();
+
+  // Only load data used by this route. PiggyBank reads and maintenance run
+  // inside Dashboard/PiggyPage, never again in the shared layout.
+  useCards(pathname === '/' || pathname === '/despesas');
+  useEntries(pathname === '/' || pathname === '/patrimonio');
+  useExpenses(pathname === '/' || pathname === '/perfil' || pathname === '/patrimonio');
 
   return (
     <div className='flex min-h-screen bg-background text-foreground'>
