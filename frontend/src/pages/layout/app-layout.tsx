@@ -6,15 +6,21 @@ import { AppTopbar } from '@/components/layout/app-topbar';
 import { useCards } from '@/hooks/use-cards';
 import { useEntries } from '@/hooks/use-entries';
 import { useExpenses } from '@/hooks/use-expenses';
+import { usePiggyBanks } from '@/hooks/use-piggy-banks';
 
 export function AppLayout() {
   const { pathname } = useLocation();
 
-  // Only load data used by this route. PiggyBank reads and maintenance run
-  // inside Dashboard/PiggyPage, never again in the shared layout.
-  useCards(pathname === '/' || pathname === '/despesas');
+  // Keep card billing maintenance at session entry: it affects invoices and
+  // financial balances even when the user first opens another section.
+  useCards();
+
+  // Avoid fetching entries, expenses and piggy transactions for unrelated tabs.
   useEntries(pathname === '/' || pathname === '/patrimonio');
   useExpenses(pathname === '/' || pathname === '/perfil' || pathname === '/patrimonio');
+  // Patrimony needs fresh piggy interest; Dashboard and PiggyPage fetch it
+  // themselves. Maintenance runs at most once per account QueryClient.
+  usePiggyBanks(false, pathname === '/patrimonio');
 
   return (
     <div className='flex min-h-screen bg-background text-foreground'>
