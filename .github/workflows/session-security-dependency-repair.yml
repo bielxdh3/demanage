@@ -26,6 +26,29 @@ jobs:
           node-version: 26.8.2
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Preserve the exact CSS used from the existing shadcn release
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p src/styles
+          CSS_PATH="$(node -e "process.stdout.write(require.resolve('shadcn/tailwind.css'))")"
+          cp "$CSS_PATH" src/styles/shadcn-tailwind.css
+          echo "Copied from shadcn@4.21.0: $CSS_PATH"
+          LICENSE_PATH="$(find -L node_modules/shadcn -maxdepth 2 -iname 'license*' -type f | head -n 1)"
+          if [ -n "$LICENSE_PATH" ]; then
+            cp "$LICENSE_PATH" src/styles/shadcn-license.txt
+          else
+            echo 'shadcn license file not found; refusing to vendor without attribution' >&2
+            exit 1
+          fi
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'src/global.css';
+          const css = fs.readFileSync(path, 'utf8');
+          const old = "@import 'shadcn/tailwind.css';";
+          if (!css.includes(old)) throw new Error('Unexpected CSS import');
+          fs.writeFileSync(path, css.replace(old, "@import './styles/shadcn-tailwind.css';"));
+          NODE
       - name: Remove vulnerable unused UI CLI and pin patched sourcemap
         run: |
           node <<'NODE'
@@ -57,7 +80,7 @@ jobs:
         run: |
           git config user.name 'deManage security maintenance'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/package.json frontend/pnpm-lock.yaml
+          git add frontend/package.json frontend/pnpm-lock.yaml frontend/src/global.css frontend/src/styles/shadcn-tailwind.css frontend/src/styles/shadcn-license.txt
           git diff --cached --check
           git diff --cached --quiet && exit 0
           git commit -m 'fix(deps): remove unused vulnerable CLI and patch sourcemap'
