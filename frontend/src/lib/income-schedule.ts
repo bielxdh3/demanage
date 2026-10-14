@@ -1,10 +1,6 @@
 import { monthlyAmount } from '@/data/labels';
-import { currentMonthKey, todayKey } from '@/lib/dates';
-import {
-  isSameMonth,
-  isWithinSchedule,
-  scheduledDayThisMonth,
-} from '@/lib/schedule';
+import { currentMonthKey, dayKeyOf, todayKey } from '@/lib/dates';
+import { isWithinSchedule, scheduledDayThisMonth } from '@/lib/schedule';
 import type { Income } from '@/types/finance';
 
 export { buildScheduleStartsAt } from '@/lib/schedule';
@@ -36,18 +32,27 @@ export function isSalaryManuallyReceived(
   );
 }
 
-/** Entrada entrou no saldo apenas pela agenda, sem override manual do salário. */
+/** Avulsas só afetam o saldo quando um recebimento real foi registrado. */
+function oneOffReceivedAmountThisMonth(income: Income, now: Date) {
+  const today = todayKey(now);
+  const month = incomeMonthKey(now);
+  return (income.receipts ?? []).reduce((sum, receipt) => {
+    const receivedOn = dayKeyOf(receipt.receivedAt);
+    if (!receivedOn || receivedOn > today || receivedOn.slice(0, 7) !== month) {
+      return sum;
+    }
+    const amount = Number(receipt.amount);
+    return sum + (Number.isFinite(amount) && amount > 0 ? amount : 0);
+  }, 0);
+}
+
+/** Crédito automático pela agenda é permitido apenas a entradas recorrentes. */
 export function isIncomeAutoReceivedThisMonth(
   income: Income,
   now: Date = new Date(),
 ) {
+  if (income.frequency === 'unica') return false;
   const today = todayKey(now);
-  if (income.frequency === 'unica') {
-    const date = income.date?.slice(0, 10);
-    if (!date) return false;
-    return isSameMonth(date, now) && today >= date;
-  }
-
   const receiveDay = scheduledDayThisMonth(income.receiveDay ?? 1, now);
   if (today < receiveDay) return false;
   return isWithinSchedule(receiveDay, income);
@@ -58,6 +63,9 @@ export function isIncomeReceivedThisMonth(
   income: Income,
   now: Date = new Date(),
 ) {
+  if (income.frequency === 'unica') {
+    return oneOffReceivedAmountThisMonth(income, now) > 0;
+  }
   if (isSalaryManuallyReceived(income, now)) return true;
   if (isSalaryWaitingForConfirmation(income, now)) return false;
   return isIncomeAutoReceivedThisMonth(income, now);
@@ -67,7 +75,9 @@ export function incomeContributionThisMonth(
   income: Income,
   now: Date = new Date(),
 ) {
+  if (income.frequency === 'unica') {
+    return oneOffReceivedAmountThisMonth(income, now);
+  }
   if (!isIncomeReceivedThisMonth(income, now)) return 0;
-  if (income.frequency === 'unica') return income.amount;
   return monthlyAmount(income.amount, income.frequency);
 }
