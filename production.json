@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "source_commit": "0b73781b50d07459923382fa32328a38969551bf",
-  "previous_commit": "cdf34b543d74213e583fd7067e63d2ee2ad9a78a",
-  "backend": "ghcr.io/bielxdh3/demanage-backend@sha256:a0f247f42395cfa414687a9c5aa90acf8ffaa0b25d5d97e51078e4c4069ce37e",
-  "frontend": "ghcr.io/bielxdh3/demanage-frontend@sha256:aca0d35bdb053e8419cdc487531f2ac5d005b278b189b7f3fffde7dcf895d5c6",
+  "source_commit": "35327cc80ef6ff02c12c3ab7cd68b313b1b4dd2b",
+  "previous_commit": "0b73781b50d07459923382fa32328a38969551bf",
+  "backend": "ghcr.io/bielxdh3/demanage-backend@sha256:337188919e2ff139199f8d94e3473c96f99f0f8f66534540960c05064825820f",
+  "frontend": "ghcr.io/bielxdh3/demanage-frontend@sha256:22e1887804907edcfe099ee23a3d730116ffb35ede65cf522dd0a83e61c8d128",
   "approved_by": "bielxdh3",
-  "approved_at": "2026-10-17T23:29:38Z"
+  "approved_at": "2026-10-18T00:00:06Z"
 }
