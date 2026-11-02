@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "source_commit": "faa174f8c53cca9226cc709893df9e7bcae5131e",
-  "previous_commit": "4bda79dfeb959ebb813e22f602a15599fe6b00fb",
-  "backend": "ghcr.io/bielxdh3/demanage-backend@sha256:fd61a84d080184773879112ce3edd67098c6d775e73ccf8bcc5e557703373bd6",
-  "frontend": "ghcr.io/bielxdh3/demanage-frontend@sha256:33b44921c0a6d7e042c35df214c2401b002ce56c94ece5cc03ac374c6816ea8f",
+  "source_commit": "4d9beefa6faefce070b2bc0b8cba2821c3a91945",
+  "previous_commit": "faa174f8c53cca9226cc709893df9e7bcae5131e",
+  "backend": "ghcr.io/bielxdh3/demanage-backend@sha256:dc05ef66b858880259398703c7d1b889bdc421ca2657b99d783a76b3554d7b8e",
+  "frontend": "ghcr.io/bielxdh3/demanage-frontend@sha256:40d00abe207a6feae26239ddfdffb6a7590c375556dd40ef3ea2b732d2a88141",
   "approved_by": "bielxdh3",
-  "approved_at": "2026-11-02T20:10:51Z",
-  "approval_run_id": 41516660629,
+  "approved_at": "2026-11-02T20:57:27Z",
+  "approval_run_id": 41523817768,
   "approval_run_attempt": 1
 }
