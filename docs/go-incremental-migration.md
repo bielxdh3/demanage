@@ -8,6 +8,10 @@ The Go service starts as a separate, database-free liveness and database-aware r
 2. **Authenticated reads:** migrate one route at a time after authentication/session parity, authorization ownership checks, response shape, and error behavior have contract tests against Express.
 3. **Single-writer writes:** migrate writes only after the same parity suite exists and traffic ownership guarantees that Express and Go cannot write the same domain concurrently. Route one write path to one implementation at a time; no dual writes.
 
+## Current authenticated read slice
+
+`GET /custom-tags?scope=expense|income` uses the existing `demanage-token` cookie and verifies HS256 JWTs with the explicitly configured `JWT_SECRET`. It checks the user's current `sessionVersion` in PostgreSQL before parsing the query, matching Express's default of zero for an omitted token claim. The scope must occur once and match exactly. The read is constrained by the verified `userId` and scope, ordered by `name ASC`, and returns the complete Prisma `CustomTag` shape (`id`, `userId`, `scope`, `name`, `color`, `createdAt`, `updatedAt`). Database failures return a generic 500 body. The Go synthetic tests cover this contract; they do not replace a real PostgreSQL integration run.
+
 ## Data and contract authority
 
 - `backend/prisma/schema.prisma` and its migrations remain the database schema authority. Go must not introduce independent schema changes or migrations.

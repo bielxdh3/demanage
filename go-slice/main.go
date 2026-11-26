@@ -19,10 +19,23 @@ const serviceName = "demanage-backend"
 
 type databaseProbe func(context.Context) error
 
+type handlerOptions struct {
+	jwtKey     []byte
+	tagReader  customTagRepository
+}
+
 func main() {
+	jwtSecret := strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	if os.Getenv("NODE_ENV") == "production" && len([]byte(jwtSecret)) < 32 {
+		fmt.Fprintln(os.Stderr, "JWT_SECRET must contain at least 32 bytes in production")
+		os.Exit(1)
+	}
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
-		Handler:           newHandler(probeDatabase),
+		Handler: newHandler(probeDatabase, handlerOptions{
+			jwtKey:    []byte(jwtSecret),
+			tagReader: postgresCustomTagRepository{databaseURL: os.Getenv("DATABASE_URL")},
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -31,8 +44,11 @@ func main() {
 	}
 }
 
-func newHandler(probe databaseProbe) http.Handler {
+func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 	mux := http.NewServeMux()
+	if len(options) > 0 {
+		registerCustomTags(mux, options[0].jwtKey, options[0].tagReader)
+	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {
 			Status    string `json:"status"`
