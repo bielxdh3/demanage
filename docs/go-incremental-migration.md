@@ -18,7 +18,7 @@ The Go service starts as a separate, database-free liveness and database-aware r
 
 ## Validation handoff
 
-Go was unavailable in the Windows PATH for this slice, and dependency downloads are intentionally left to hosted CI. From `go-slice/`, the hosted runner runs `go mod tidy`, then `test -z "$(gofmt -l .)"`, `go test ./...`, and `go vet ./...`. It uploads the generated public `go.mod` and `go.sum` as `go-module-files-bootstrap` so the owner can commit them before switching CI to readonly dependency validation. No checksums are fabricated or committed by this preparation.
+Go was unavailable in the Windows PATH during implementation. The bootstrap module manifests were generated and verified in hosted run [45903566480](https://github.com/bielxdh3/demanage/actions/runs/45903566480); the current workflow requires `go mod tidy -diff`, `go mod verify`, formatting validation, `go test -mod=readonly ./...`, and `go vet -mod=readonly ./...`. These checks prove the synthetic health contracts and module integrity; they do not verify connectivity to a real PostgreSQL database.
 
 ## Synthetic performance acceptance
 

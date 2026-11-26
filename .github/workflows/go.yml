@@ -26,21 +26,13 @@ jobs:
         with:
           go-version: '1.25.x'
           cache: false
-      - name: Resolve module files for draft CI bootstrap
-        id: tidy
-        run: go mod tidy
+      - name: Check module files are tidy
+        run: go mod tidy -diff
+      - name: Verify downloaded module integrity
+        run: go mod verify
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - name: Test synthetic health contracts
-        run: go test ./...
+        run: go test -mod=readonly ./...
       - name: Vet
-        run: go vet ./...
-      - name: Upload public Go module files for owner commit
-        if: steps.tidy.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: go-module-files-bootstrap
-          path: |
-            go-slice/go.mod
-            go-slice/go.sum
-          if-no-files-found: error
+        run: go vet -mod=readonly ./...
