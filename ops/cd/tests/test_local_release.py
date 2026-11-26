@@ -124,11 +124,23 @@ class LocalReleaseApprovalTests(unittest.TestCase):
         def unreviewed_master(*cmd):
             if cmd[-2:] == ("origin", "refs/heads/master"):
                 return later_head + " refs/heads/master"
+            if cmd[3:6] == ("diff", "--name-status", "--no-renames"):
+                return "M\tbackend/src/server.ts"
             return original(*cmd)
 
-        with mock.patch.object(approval, "call", side_effect=unreviewed_master):
+        # The checkout running this policy test need not contain the historical
+        # Issue87 target. Model the ancestor checks so this fixture reaches the
+        # reviewed-delta gate it is intended to exercise.
+        with (
+            mock.patch.object(approval, "call", side_effect=unreviewed_master) as git_call,
+            mock.patch.object(approval.subprocess, "run", return_value=mock.Mock(returncode=0)),
+        ):
             with self.assertRaisesRegex(RuntimeError, "Issue87 unreviewed master changes"):
                 approval.verify_git(repo, ISSUE87_PREVIOUS, ISSUE87_TARGET)
+        git_call.assert_any_call(
+            "git", "-C", str(repo), "diff", "--name-status", "--no-renames",
+            ISSUE87_TARGET, later_head,
+        )
 
     def test_issue87_dry_run_requires_exact_explicit_rehearsal_acknowledgment(self):
         mocks = self.setup_success()
