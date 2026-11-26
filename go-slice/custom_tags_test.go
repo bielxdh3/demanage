@@ -178,7 +178,7 @@ func TestCustomTagsRejectsMalformedAndWrongKeyTokens(t *testing.T) {
 func TestCustomTagsSanitizesDatabaseFailuresAsServerErrors(t *testing.T) {
 	for name, repository := range map[string]*fakeCustomTagRepository{
 		"session lookup": &fakeCustomTagRepository{userError: errors.New("private database host and password")},
-		"tag query":     &fakeCustomTagRepository{userExists: true, listError: errors.New("private database host and password")},
+		"tag query":      &fakeCustomTagRepository{userExists: true, listError: errors.New("private database host and password")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			response := serveCustomTags(t, repository, map[string]any{"userId": "owner-1", "sessionVersion": 0, "exp": 4102444800}, "scope=expense")
