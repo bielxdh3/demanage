@@ -12,17 +12,19 @@ The Go service starts as a separate, database-free liveness and database-aware r
 
 `GET /custom-tags?scope=expense|income` uses the existing `demanage-token` cookie and verifies HS256 JWTs with the explicitly configured `JWT_SECRET`. It checks the user's current `sessionVersion` in PostgreSQL before parsing the query, matching Express's default of zero for an omitted token claim. The scope must occur once and match exactly. The read is constrained by the verified `userId` and scope, ordered by `name ASC`, and returns the complete Prisma `CustomTag` shape (`id`, `userId`, `scope`, `name`, `color`, `createdAt`, `updatedAt`). Database failures return a generic 500 body. The Go synthetic tests cover this contract; they do not replace a real PostgreSQL integration run.
 
+The Go service shares one bounded `pgxpool` for its lifetime (`MaxConns=4`). `/ready` still performs a real `SELECT 1` under a two-second request timeout and fails closed if its database configuration or connection is unavailable. Each custom-tag database lookup retains a three-second timeout. The Go CI job runs a separate, mandatory integration test against an ephemeral PostgreSQL service, with fixed synthetic users and tags. Its route-only fixture is derived from the custom-tag and session-version migrations, but includes only the columns those reads use; it is not the complete Prisma schema.
+
 ## Data and contract authority
 
 - `backend/prisma/schema.prisma` and its migrations remain the database schema authority. Go must not introduce independent schema changes or migrations.
 - Preserve monetary values exactly. Do not pass financial amounts through `float32` or `float64`; use decimal strings or integer minor units at API boundaries and a decimal-capable representation for database arithmetic. Match Prisma decimal precision and rounding only after parity tests establish the current behavior.
 - Every migrated route needs synthetic Go contract tests for status, stable headers, body fields, errors, and relevant authorization behavior, plus parity fixtures captured from the Express handler. Volatile fields (timestamps, generated ETags) should be shape-checked or normalized, not frozen.
 - Express's weak ETag hashes the response bytes with SHA-1, base64-encodes it, and truncates the digest to 27 characters. The Go health handler preserves this form and honors matching `If-None-Match` on GET/HEAD with a bodyless 304.
-- Database connectivity tests use injected synthetic probes. Do not use a real database or credentials in the health contract tests.
+- Health contract tests use injected synthetic probes. The separately tagged PostgreSQL integration test runs only in GitHub Actions with a dedicated test DSN, never `DATABASE_URL`; it is not a full Express differential suite.
 
 ## Validation handoff
 
-Go was unavailable in the Windows PATH during implementation. The bootstrap module manifests were generated and verified in hosted run [45903566480](https://github.com/bielxdh3/demanage/actions/runs/45903566480); the current workflow requires `go mod tidy -diff`, `go mod verify`, formatting validation, `go test -mod=readonly ./...`, and `go vet -mod=readonly ./...`. These checks prove the synthetic health contracts and module integrity; they do not verify connectivity to a real PostgreSQL database.
+Go was unavailable in the Windows PATH during implementation. The bootstrap module manifests were generated and verified in hosted run [45903566480](https://github.com/bielxdh3/demanage/actions/runs/45903566480); the current workflow requires `go mod tidy -diff`, `go mod verify`, formatting validation, synthetic tests, the tagged ephemeral-PostgreSQL integration test, and `go vet -mod=readonly ./...`. The integration fixture proves the selected SQL and route behavior against a route-only schema; it does not prove full Express differential parity or production performance. Those require separate differential fixtures and the benchmark gate below.
 
 ## Synthetic performance acceptance
 

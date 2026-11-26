@@ -15,6 +15,21 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_USER: demanage
+          POSTGRES_PASSWORD: demanage
+          POSTGRES_DB: demanage_go_test
+          TZ: UTC
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U demanage -d demanage_go_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: go-slice
@@ -39,5 +54,9 @@ jobs:
           fi
       - name: Test synthetic health contracts
         run: go test -mod=readonly ./...
+      - name: Test PostgreSQL custom-tags integration
+        env:
+          GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
+        run: go test -mod=readonly -tags=integration -run '^TestPostgresCustomTagsIntegration$' -count=1
       - name: Vet
         run: go vet -mod=readonly ./...

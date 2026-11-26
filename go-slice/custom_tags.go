@@ -33,7 +33,7 @@ type customTagRepository interface {
 }
 
 type postgresCustomTagRepository struct {
-	databaseURL string
+	database *postgresDatabase
 }
 
 func (repository postgresCustomTagRepository) FindUserSessionVersion(ctx context.Context, userID string) (int64, bool, error) {
@@ -83,21 +83,15 @@ func (repository postgresCustomTagRepository) ListCustomTags(ctx context.Context
 }
 
 func (repository postgresCustomTagRepository) withPool(ctx context.Context, run func(context.Context, *pgxpool.Pool) error) error {
-	if repository.databaseURL == "" {
+	if repository.database == nil {
 		return fmt.Errorf("database is not configured")
 	}
-	config, err := pgxpool.ParseConfig(repository.databaseURL)
-	if err != nil {
-		return err
-	}
-	config.MaxConns = 1
 	queryContext, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	pool, err := pgxpool.NewWithConfig(queryContext, config)
+	pool, err := repository.database.pool()
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
 	return run(queryContext, pool)
 }
 

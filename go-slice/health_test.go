@@ -80,8 +80,9 @@ func TestReadyContractMatchesExpressWhenDatabaseIsDown(t *testing.T) {
 }
 
 func TestDatabaseProbeFailsClosedWhenURLIsNotConfigured(t *testing.T) {
-	t.Setenv("DATABASE_URL", "")
-	if err := probeDatabase(context.Background()); err == nil {
+	database := newPostgresDatabase("")
+	defer database.Close()
+	if err := database.Probe(context.Background()); err == nil {
 		t.Fatal("probeDatabase() succeeded without DATABASE_URL")
 	}
 }

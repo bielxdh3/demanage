@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const serviceName = "demanage-backend"
@@ -30,9 +28,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "JWT_SECRET must contain at least 32 bytes in production")
 		os.Exit(1)
 	}
-	handler := newHandler(probeDatabase, handlerOptions{
+	database := newPostgresDatabase(os.Getenv("DATABASE_URL"))
+	defer database.Close()
+	handler := newHandler(database.Probe, handlerOptions{
 		jwtKey:    []byte(jwtSecret),
-		tagReader: postgresCustomTagRepository{databaseURL: os.Getenv("DATABASE_URL")},
+		tagReader: postgresCustomTagRepository{database: database},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -73,32 +73,6 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 		}{"ok", serviceName, "ready"})
 	})
 	return mux
-}
-
-func probeDatabase(requestContext context.Context) error {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return fmt.Errorf("DATABASE_URL is not configured")
-	}
-	config, err := pgxpool.ParseConfig(databaseURL)
-	if err != nil {
-		return err
-	}
-	config.MaxConns = 1
-	ctx, cancel := context.WithTimeout(requestContext, 2*time.Second)
-	defer cancel()
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-	connection, err := pool.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer connection.Release()
-	_, err = connection.Exec(ctx, "SELECT 1")
-	return err
 }
 
 func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
