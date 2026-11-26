@@ -82,6 +82,8 @@ func writeJSON(w http.ResponseWriter, r *http.Request, status int, value any) {
 		return
 	}
 	w.Header().Set("X-Powered-By", "Express")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	etag := expressETag(body)

@@ -142,6 +142,12 @@ func assertExpressJSONHeaders(t *testing.T, response *httptest.ResponseRecorder)
 	if got, want := response.Header().Get("X-Powered-By"), "Express"; got != want {
 		t.Errorf("X-Powered-By = %q, want %q", got, want)
 	}
+	if got, want := response.Header().Get("Cache-Control"), "no-store"; got != want {
+		t.Errorf("Cache-Control = %q, want %q", got, want)
+	}
+	if got, want := response.Header().Get("Permissions-Policy"), "camera=(), geolocation=(), microphone=()"; got != want {
+		t.Errorf("Permissions-Policy = %q, want %q", got, want)
+	}
 	if got, want := response.Header().Get("Content-Type"), "application/json; charset=utf-8"; got != want {
 		t.Errorf("Content-Type = %q, want %q", got, want)
 	}
