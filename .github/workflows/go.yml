@@ -31,7 +31,12 @@ jobs:
       - name: Verify downloaded module integrity
         run: go mod verify
       - name: Check formatting
-        run: test -z "$(gofmt -l .)"
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            gofmt -d .
+            exit 1
+          fi
       - name: Test synthetic health contracts
         run: go test -mod=readonly ./...
       - name: Vet

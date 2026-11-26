@@ -20,8 +20,8 @@ const serviceName = "demanage-backend"
 type databaseProbe func(context.Context) error
 
 type handlerOptions struct {
-	jwtKey     []byte
-	tagReader  customTagRepository
+	jwtKey    []byte
+	tagReader customTagRepository
 }
 
 func main() {
@@ -30,12 +30,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "JWT_SECRET must contain at least 32 bytes in production")
 		os.Exit(1)
 	}
+	handler := newHandler(probeDatabase, handlerOptions{
+		jwtKey:    []byte(jwtSecret),
+		tagReader: postgresCustomTagRepository{databaseURL: os.Getenv("DATABASE_URL")},
+	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
-		Handler: newHandler(probeDatabase, handlerOptions{
-			jwtKey:    []byte(jwtSecret),
-			tagReader: postgresCustomTagRepository{databaseURL: os.Getenv("DATABASE_URL")},
-		}),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

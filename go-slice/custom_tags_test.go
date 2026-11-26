@@ -14,15 +14,15 @@ import (
 var testJWTKey = []byte("synthetic-only-custom-tag-test-key")
 
 type fakeCustomTagRepository struct {
-	userID          string
-	sessionVersion  int64
-	userExists      bool
-	userError       error
-	listUserID      string
-	listScope       string
-	tags            []customTag
-	listError       error
-	listCalls       int
+	userID         string
+	sessionVersion int64
+	userExists     bool
+	userError      error
+	listUserID     string
+	listScope      string
+	tags           []customTag
+	listError      error
+	listCalls      int
 }
 
 func (f *fakeCustomTagRepository) FindUserSessionVersion(_ context.Context, userID string) (int64, bool, error) {
@@ -80,9 +80,9 @@ func TestCustomTagsRetainsDuplicateNamesReturnedByDatabase(t *testing.T) {
 
 func TestCustomTagsRejectsInvalidAndDuplicateScopesLikeExpress(t *testing.T) {
 	tests := []struct {
-		name       string
-		query      string
-		wantError  string
+		name      string
+		query     string
+		wantError string
 	}{
 		{name: "missing", wantError: "Query obrigatória: scope=expense|income"},
 		{name: "invalid", query: "scope=Expense", wantError: "Query obrigatória: scope=expense|income"},
@@ -177,8 +177,8 @@ func TestCustomTagsRejectsMalformedAndWrongKeyTokens(t *testing.T) {
 
 func TestCustomTagsSanitizesDatabaseFailuresAsServerErrors(t *testing.T) {
 	for name, repository := range map[string]*fakeCustomTagRepository{
-		"session lookup": {userError: errors.New("private database host and password")},
-		"tag query":     {userExists: true, listError: errors.New("private database host and password")},
+		"session lookup": &fakeCustomTagRepository{userError: errors.New("private database host and password")},
+		"tag query":     &fakeCustomTagRepository{userExists: true, listError: errors.New("private database host and password")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			response := serveCustomTags(t, repository, map[string]any{"userId": "owner-1", "sessionVersion": 0, "exp": 4102444800}, "scope=expense")
