@@ -169,7 +169,7 @@ func TestPiggyProjectionCollectorPreservesExactJSONAndEmptyArrays(t *testing.T) 
 		[]byte(`{"amount":0.10,"date":"2026-05-01"}`),
 		[]byte(`{"amount":1234567890.12,"date":"2026-05-02"}`),
 	}
-	rows := &syntheticPiggyProjectionRows{values: fixtures}
+	rows := &syntheticEntryProjectionRows{values: fixtures}
 	projections, err := collectPiggyProjections(rows)
 	if err != nil {
 		t.Fatalf("collect piggy projections: %v", err)
@@ -205,12 +205,12 @@ func TestPiggyProjectionCollectorPreservesExactJSONAndEmptyArrays(t *testing.T) 
 		}
 	}
 
-	empty, err := collectPiggyProjections(&syntheticPiggyProjectionRows{})
+	empty, err := collectPiggyProjections(&syntheticEntryProjectionRows{})
 	if err != nil || empty == nil || len(empty) != 0 {
 		t.Fatalf("empty projections = %#v, %v, want non-nil empty array", empty, err)
 	}
 	scanFailure := errors.New("synthetic scan failure")
-	if _, err := collectPiggyProjections(&syntheticPiggyProjectionRows{values: [][]byte{[]byte(`{}`)}, scanErr: scanFailure}); !errors.Is(err, scanFailure) {
+	if _, err := collectPiggyProjections(&syntheticEntryProjectionRows{values: [][]byte{[]byte(`{}`)}, scanErr: scanFailure}); !errors.Is(err, scanFailure) {
 		t.Fatalf("scan error = %v, want %v", err, scanFailure)
 	}
 }
