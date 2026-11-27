@@ -753,8 +753,12 @@ async function runContract() {
   const client = prisma;
   assert.ok(client);
   await client.user.update({ where: { id: ownerA }, data: { sessionVersion: 1 } });
-  assert.equal((await compare('/assets/BTC/transactions', ownerAToken)).status, 401);
-  assert.equal((await compare('/patrimony/settings', ownerAToken)).status, 401);
+  try {
+    assert.equal((await compare('/assets/BTC/transactions', ownerAToken)).status, 401);
+    assert.equal((await compare('/patrimony/settings', ownerAToken)).status, 401);
+  } finally {
+    await client.user.update({ where: { id: ownerA }, data: { sessionVersion: 0 } });
+  }
 
   await compare('/health');
   const ready = await compare('/ready');
