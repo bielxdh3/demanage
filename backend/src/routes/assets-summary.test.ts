@@ -68,41 +68,61 @@ test('GET /assets and GET /assets/:asset summarize BTC/USD with synthetic data a
   let providerFails = false;
   const localFetch = globalThis.fetch;
 
-  t.mock.method(prisma.user, 'findUnique', async ({ where }) =>
-    (owners.get(where.id) ?? null) as never,
+  t.mock.method(
+    prisma.user,
+    'findUnique',
+    async ({ where }: Parameters<typeof prisma.user.findUnique>[0]) =>
+      (owners.get(where.id ?? '') ?? null) as never,
   );
-  t.mock.method(prisma.assetTransaction, 'findMany', async ({ where }) => {
-    const userId = where.userId ?? '';
-    const asset = where.asset ?? '';
-    queries.push({ userId, asset });
-    return (userId === OWNER_ID && asset === 'BTC' ? [transaction()] : []) as never;
-  });
+  t.mock.method(
+    prisma.assetTransaction,
+    'findMany',
+    async ({ where }: Parameters<typeof prisma.assetTransaction.findMany>[0]) => {
+      const userId = where.userId ?? '';
+      const asset = where.asset ?? '';
+      queries.push({ userId, asset });
+      return (userId === OWNER_ID && asset === 'BTC' ? [transaction()] : []) as never;
+    },
+  );
   t.mock.method(prisma.marketDataCache, 'findFirst', async () => null as never);
-  t.mock.method(prisma.marketDataCache, 'upsert', async ({ where, create }) => {
-    cacheWrites.push({
-      provider: where.provider_key_at.provider,
-      key: where.provider_key_at.key,
-      value: String(create.value),
-    });
-    return {} as never;
-  });
-  t.mock.method(globalThis, 'fetch', async (input, init) => {
-    const url = String(input);
-    if (url.startsWith('http://127.0.0.1:')) return localFetch(input, init);
-    providerUrls.push(url);
-    if (providerFails) throw new TypeError('synthetic provider outage');
-    if (url.includes('coinbase.com')) {
-      return new Response(JSON.stringify({ data: { amount: '51234.56789123' } }), {
-        headers: { 'content-type': 'application/json' },
+  t.mock.method(
+    prisma.marketDataCache,
+    'upsert',
+    async ({ where, create }: Parameters<typeof prisma.marketDataCache.upsert>[0]) => {
+      const cacheKey = where.provider_key_at;
+      if (!cacheKey) throw new Error('unexpected cache upsert without composite key');
+      cacheWrites.push({
+        provider: cacheKey.provider,
+        key: cacheKey.key,
+        value: String(create.value),
       });
-    }
-    if (url.includes('awesomeapi.com.br')) {
-      return new Response(JSON.stringify({ USDBRL: { bid: '5.43210987' } }), {
-        headers: { 'content-type': 'application/json' },
-      });
-    }
-    throw new Error(`unexpected synthetic provider URL: ${url}`);
-  });
+      return {} as never;
+    },
+  );
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async (
+      input: Parameters<typeof globalThis.fetch>[0],
+      init: Parameters<typeof globalThis.fetch>[1],
+    ) => {
+      const url = String(input);
+      if (url.startsWith('http://127.0.0.1:')) return localFetch(input, init);
+      providerUrls.push(url);
+      if (providerFails) throw new TypeError('synthetic provider outage');
+      if (url.includes('coinbase.com')) {
+        return new Response(JSON.stringify({ data: { amount: '51234.56789123' } }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url.includes('awesomeapi.com.br')) {
+        return new Response(JSON.stringify({ USDBRL: { bid: '5.43210987' } }), {
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      throw new Error(`unexpected synthetic provider URL: ${url}`);
+    },
+  );
 
   const app = express();
   app.use(cookieParser());

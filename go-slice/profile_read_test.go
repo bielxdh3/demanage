@@ -15,10 +15,10 @@ import (
 )
 
 type fakeProfileReadRepository struct {
-	userID string
+	userID  string
 	profile *profileRead
-	err error
-	calls int
+	err     error
+	calls   int
 }
 
 func (repository *fakeProfileReadRepository) ReadProfile(_ context.Context, userID string) (*profileRead, error) {
@@ -29,15 +29,15 @@ func (repository *fakeProfileReadRepository) ReadProfile(_ context.Context, user
 
 func TestProfileReadReturnsPublicContractWithDefaultSalaryAndNoPrivateData(t *testing.T) {
 	profile := &profileRead{
-		ID: "owner-a",
-		Name: "Ana",
-		Email: "ana@example.test",
-		HasRecoveryCode: false,
-		Salary: 0,
+		ID:               "owner-a",
+		Name:             "Ana",
+		Email:            "ana@example.test",
+		HasRecoveryCode:  false,
+		Salary:           0,
 		SalaryReceiveDay: nil,
-		Notes: nil,
-		CreatedAt: "2026-01-02T03:04:05.006Z",
-		UpdatedAt: "2026-02-03T04:05:06.007Z",
+		Notes:            nil,
+		CreatedAt:        "2026-01-02T03:04:05.006Z",
+		UpdatedAt:        "2026-02-03T04:05:06.007Z",
 	}
 	repository := &fakeProfileReadRepository{profile: profile}
 	sessions := &fakeCustomTagRepository{userExists: true, sessionVersion: 7}
@@ -66,15 +66,15 @@ func TestProfileReadSerializesSyntheticSalaryAndNullableFields(t *testing.T) {
 	receiveDay := int32(5)
 	notes := "meta privada do perfil"
 	profile := &profileRead{
-		ID: "owner-b",
-		Name: "Bia",
-		Email: "bia@example.test",
-		HasRecoveryCode: true,
-		Salary: 1234.5,
+		ID:               "owner-b",
+		Name:             "Bia",
+		Email:            "bia@example.test",
+		HasRecoveryCode:  true,
+		Salary:           1234.5,
 		SalaryReceiveDay: &receiveDay,
-		Notes: &notes,
-		CreatedAt: "2026-03-04T05:06:07.008Z",
-		UpdatedAt: "2026-04-05T06:07:08.009Z",
+		Notes:            &notes,
+		CreatedAt:        "2026-03-04T05:06:07.008Z",
+		UpdatedAt:        "2026-04-05T06:07:08.009Z",
 	}
 	repository := &fakeProfileReadRepository{profile: profile}
 	mux := http.NewServeMux()
