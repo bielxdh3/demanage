@@ -14,12 +14,18 @@ type entryListRepository interface {
 	ListEntries(context.Context, string) ([]json.RawMessage, error)
 }
 
+type cardListRepository interface {
+	ListCards(context.Context, string) ([]cardReadProjection, error)
+}
+
 func registerFinancialReads(
 	mux *http.ServeMux,
 	jwtKey []byte,
 	sessionReader userSessionVersionRepository,
 	expenseReader expenseListRepository,
 	entryReader entryListRepository,
+	cardReader cardListRepository,
+	piggyBankReader piggyBankListRepository,
 ) {
 	expensesHandler := func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := financialReadUserOrRespond(w, r, jwtKey, sessionReader)
@@ -59,11 +65,35 @@ func registerFinancialReads(
 		}
 		writeJSON(w, r, http.StatusOK, entries)
 	}
+	cardsHandler := func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := financialReadUserOrRespond(w, r, jwtKey, sessionReader)
+		if !ok {
+			return
+		}
+		if cardReader == nil {
+			writeInternalError(w, r)
+			return
+		}
+		cards, err := cardReader.ListCards(r.Context(), userID)
+		if err != nil {
+			writeInternalError(w, r)
+			return
+		}
+		if cards == nil {
+			cards = []cardReadProjection{}
+		}
+		writeJSON(w, r, http.StatusOK, cards)
+	}
+	piggyBanksHandler := newPiggyBanksHandler(jwtKey, sessionReader, piggyBankReader)
 
 	mux.HandleFunc("GET /expenses", expensesHandler)
 	mux.HandleFunc("GET /expenses/{$}", expensesHandler)
 	mux.HandleFunc("GET /entries", entriesHandler)
 	mux.HandleFunc("GET /entries/{$}", entriesHandler)
+	mux.HandleFunc("GET /cards", cardsHandler)
+	mux.HandleFunc("GET /cards/{$}", cardsHandler)
+	mux.Handle("GET /piggy-banks", piggyBanksHandler)
+	mux.Handle("GET /piggy-banks/{$}", piggyBanksHandler)
 }
 
 func financialReadUserOrRespond(

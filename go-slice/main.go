@@ -18,10 +18,12 @@ const serviceName = "demanage-backend"
 type databaseProbe func(context.Context) error
 
 type handlerOptions struct {
-	jwtKey        []byte
-	tagReader     customTagRepository
-	expenseReader expenseListRepository
-	entryReader   entryListRepository
+	jwtKey          []byte
+	tagReader       customTagRepository
+	expenseReader   expenseListRepository
+	entryReader     entryListRepository
+	cardReader      cardListRepository
+	piggyBankReader piggyBankListRepository
 }
 
 func main() {
@@ -30,13 +32,20 @@ func main() {
 		fmt.Fprintln(os.Stderr, "JWT_SECRET must contain at least 32 bytes in production")
 		os.Exit(1)
 	}
+	clock, err := contractClock()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	database := newPostgresDatabase(os.Getenv("DATABASE_URL"))
 	defer database.Close()
 	handler := newHandler(database.Probe, handlerOptions{
-		jwtKey:        []byte(jwtSecret),
-		tagReader:     postgresCustomTagRepository{database: database},
-		expenseReader: postgresExpenseRepository{database: database},
-		entryReader:   postgresEntryRepository{database: database},
+		jwtKey:          []byte(jwtSecret),
+		tagReader:       postgresCustomTagRepository{database: database},
+		expenseReader:   postgresExpenseRepository{database: database},
+		entryReader:     postgresEntryRepository{database: database},
+		cardReader:      postgresCardRepository{database: database, now: clock},
+		piggyBankReader: postgresPiggyBankRepository{database: database, now: clock},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -53,7 +62,15 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 	mux := http.NewServeMux()
 	if len(options) > 0 {
 		registerCustomTags(mux, options[0].jwtKey, options[0].tagReader)
-		registerFinancialReads(mux, options[0].jwtKey, options[0].tagReader, options[0].expenseReader, options[0].entryReader)
+		registerFinancialReads(
+			mux,
+			options[0].jwtKey,
+			options[0].tagReader,
+			options[0].expenseReader,
+			options[0].entryReader,
+			options[0].cardReader,
+			options[0].piggyBankReader,
+		)
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {

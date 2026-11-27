@@ -19,6 +19,7 @@ type cardReadQueryer interface {
 
 type postgresCardRepository struct {
 	database *postgresDatabase
+	now      func() time.Time
 }
 
 type cardReadRecord struct {
@@ -133,7 +134,11 @@ func (repository postgresCardRepository) ListCards(ctx context.Context, userID s
 	if err != nil {
 		return nil, err
 	}
-	return queryCardsAt(queryContext, pool, userID, time.Now())
+	now := time.Now
+	if repository.now != nil {
+		now = repository.now
+	}
+	return queryCardsAt(queryContext, pool, userID, now())
 }
 
 func queryCardsAt(ctx context.Context, queryer cardReadQueryer, userID string, asOf time.Time) ([]cardReadProjection, error) {

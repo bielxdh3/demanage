@@ -1,10 +1,23 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
 )
+
+type fakeCardListRepository struct {
+	userID    string
+	items     []cardReadProjection
+	listCalls int
+}
+
+func (repository *fakeCardListRepository) ListCards(_ context.Context, userID string) ([]cardReadProjection, error) {
+	repository.listCalls++
+	repository.userID = userID
+	return repository.items, nil
+}
 
 func TestCardReadSerializationMatchesExpressFieldsAndUsesInjectedTime(t *testing.T) {
 	now := time.Date(2026, time.June, 6, 2, 59, 59, 0, time.UTC)

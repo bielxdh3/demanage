@@ -103,7 +103,10 @@ jobs:
           cache: false
       - name: Build Go HTTP server
         working-directory: go-slice
-        run: go build -mod=readonly -o "$RUNNER_TEMP/demanage-go-contract" .
+        run: go build -mod=readonly -tags=go_contract_test -o "$RUNNER_TEMP/demanage-go-contract" .
+      - name: Test tagged contract clock
+        working-directory: go-slice
+        run: go test -mod=readonly -tags=go_contract_test -run ^TestContractClock -count=1 -v
       - name: Validate disposable parity database target
         env:
           DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_parity_test?sslmode=disable

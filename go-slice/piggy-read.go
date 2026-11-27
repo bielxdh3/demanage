@@ -92,6 +92,7 @@ type piggyBankQueryer interface {
 
 type postgresPiggyBankRepository struct {
 	database *postgresDatabase
+	now      func() time.Time
 }
 
 func piggyMonthInSaoPaulo(now time.Time) (string, error) {
@@ -116,7 +117,11 @@ func (repository postgresPiggyBankRepository) ListPiggyBanks(
 	if err != nil {
 		return nil, err
 	}
-	return queryPiggyBanks(queryContext, pool, userID, includeArchived, time.Now())
+	now := time.Now
+	if repository.now != nil {
+		now = repository.now
+	}
+	return queryPiggyBanks(queryContext, pool, userID, includeArchived, now())
 }
 
 func newPiggyBanksHandler(
