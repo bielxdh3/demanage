@@ -58,10 +58,14 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 	if len(options) > 0 {
 		registerCustomTags(mux, options[0].jwtKey, options[0].tagReader)
 		registerFinancialReads(mux, options[0].jwtKey, options[0].tagReader, options[0].expenseReader, options[0].entryReader)
-		registerPiggyBankReadProjections(mux, options[0].jwtKey, options[0].tagReader, options[0].piggyBankReader)
-		financialHistory := financialHistoryHandler(options[0].jwtKey, options[0].tagReader, options[0].financialHistoryReader)
-		mux.HandleFunc("GET /financial-history", financialHistory)
-		mux.HandleFunc("GET /financial-history/{$}", financialHistory)
+		if options[0].piggyBankReader != nil {
+			registerPiggyBankReadProjections(mux, options[0].jwtKey, options[0].tagReader, options[0].piggyBankReader)
+		}
+		if options[0].financialHistoryReader != nil {
+			financialHistory := financialHistoryHandler(options[0].jwtKey, options[0].tagReader, options[0].financialHistoryReader)
+			mux.HandleFunc("GET /financial-history", financialHistory)
+			mux.HandleFunc("GET /financial-history/{$}", financialHistory)
+		}
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {

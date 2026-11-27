@@ -39,6 +39,31 @@ type fakePiggyReadRepository struct {
 	transactionCalls int
 }
 
+func TestPiggyBankReadRoutesRequireRepositoryToMount(t *testing.T) {
+	sharedHandler := newHandler(func(context.Context) error { return nil }, handlerOptions{
+		jwtKey:    testJWTKey,
+		tagReader: &fakeCustomTagRepository{userExists: true},
+	})
+	for _, path := range []string{"/piggy-banks/cash-movements", "/piggy-banks/bank-a/transactions"} {
+		response := httptest.NewRecorder()
+		sharedHandler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, nil))
+		if response.Code != http.StatusNotFound {
+			t.Errorf("unconfigured shared handler %s status = %d, want 404", path, response.Code)
+		}
+	}
+
+	configuredHandler := newHandler(func(context.Context) error { return nil }, handlerOptions{
+		jwtKey:         testJWTKey,
+		tagReader:      &fakeCustomTagRepository{userExists: true},
+		piggyBankReader: &fakePiggyReadRepository{},
+	})
+	response := httptest.NewRecorder()
+	configuredHandler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/piggy-banks/cash-movements", nil))
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("configured loopback handler status = %d, want 401 for unauthenticated request", response.Code)
+	}
+}
+
 func (repository *fakePiggyReadRepository) ListPiggyCashMovements(_ context.Context, userID string) ([]json.RawMessage, error) {
 	repository.cashCalls++
 	repository.cashUserID = userID

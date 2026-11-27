@@ -67,6 +67,17 @@ func TestFinancialHistoryHandlerRemainsUnmountedFromSharedServer(t *testing.T) {
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("shared handler status = %d, want 404 while financial history remains unmounted", response.Code)
 	}
+
+	configuredHandler := newHandler(func(context.Context) error { return nil }, handlerOptions{
+		jwtKey:                 testJWTKey,
+		tagReader:              &fakeCustomTagRepository{userExists: true},
+		financialHistoryReader: &fakeFinancialHistoryReader{},
+	})
+	configuredResponse := httptest.NewRecorder()
+	configuredHandler.ServeHTTP(configuredResponse, httptest.NewRequest(http.MethodGet, "/financial-history", nil))
+	if configuredResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("configured loopback handler status = %d, want 401 for unauthenticated request", configuredResponse.Code)
+	}
 }
 
 func TestFinancialHistoryHandlerReturnsExpressErrorsWithoutLeakingRepositoryDetails(t *testing.T) {
