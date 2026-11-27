@@ -97,8 +97,8 @@ type cardReadProjection struct {
 }
 
 type cardReadCycleWindow struct {
-	periodStartKey    string
-	closingKey        string
+	periodStartKey     string
+	closingKey         string
 	includePeriodStart bool
 }
 
@@ -533,14 +533,14 @@ func serializeCardAt(card cardReadRecord, committed money, asOf time.Time) (card
 	}
 	return cardReadProjection{
 		ID: card.ID, Name: card.Name, Limit: card.Limit, ClosingDay: card.ClosingDay,
-		PendingClosingDay: card.PendingClosingDay,
-		ArchivedAt: cardReadFormatNullableTimestamp(card.ArchivedAt),
-		ExpiresAt: cardReadFormatNullableTimestamp(card.ExpiresAt),
-		LastInvoicedOn: cardReadFormatNullableTimestamp(card.LastInvoicedOn),
+		PendingClosingDay:    card.PendingClosingDay,
+		ArchivedAt:           cardReadFormatNullableTimestamp(card.ArchivedAt),
+		ExpiresAt:            cardReadFormatNullableTimestamp(card.ExpiresAt),
+		LastInvoicedOn:       cardReadFormatNullableTimestamp(card.LastInvoicedOn),
 		LastBillingProcessed: cardReadFormatNullableTimestamp(card.LastBillingProcessedAt),
-		CreatedAt: card.CreatedAt.UTC().Format("2006-01-02T15:04:05.000Z"),
-		UpdatedAt: card.UpdatedAt.UTC().Format("2006-01-02T15:04:05.000Z"),
-		Committed: committed, Available: available, MaxChargesPerCycle: maxCharges,
+		CreatedAt:            card.CreatedAt.UTC().Format("2006-01-02T15:04:05.000Z"),
+		UpdatedAt:            card.UpdatedAt.UTC().Format("2006-01-02T15:04:05.000Z"),
+		Committed:            committed, Available: available, MaxChargesPerCycle: maxCharges,
 		Expired: card.ExpiresAt != nil && card.ExpiresAt.Before(asOf),
 	}, nil
 }
