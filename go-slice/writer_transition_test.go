@@ -182,7 +182,7 @@ func TestCustomTagRollbackDoesNotReplayUnknownOrCommittedMutations(t *testing.T)
 		t.Fatalf("post-rollback reconciliation: %v", err)
 	}
 	for _, operationID := range []string{seed.operationID, committed.operationID, unknown.operationID} {
-		if got := store.attempts(operationID); got != 1 {
+		if got := store.attemptCount(operationID); got != 1 {
 			t.Errorf("operation %q attempts after rollback = %d, want 1", operationID, got)
 		}
 	}
@@ -364,7 +364,7 @@ func applySyntheticTagWrite(
 	return nil
 }
 
-func (store *syntheticTagStore) attempts(operationID string) int {
+func (store *syntheticTagStore) attemptCount(operationID string) int {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	return store.attempts[operationID]
