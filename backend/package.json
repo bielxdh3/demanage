@@ -19,6 +19,7 @@
     "test:go-contract": "tsx scripts/go-contract.ts",
     "test:go-contract:load": "tsx scripts/go-contract.ts --load",
     "test:go-contract:qualify": "tsx scripts/go-contract.ts --load --qualify",
+    "test:go-contract:qualify:reads": "tsx scripts/go-contract.ts --load --qualify --qualify-reads",
     "test": "pnpm run test:unit && pnpm run test:integration",
     "format": "prettier --write \"src/**/*.{ts,js}\""
   },

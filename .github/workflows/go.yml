@@ -138,6 +138,9 @@ jobs:
         run: |
           pnpm exec prisma generate
           pnpm exec prisma migrate deploy
+      - name: Test read qualification route shapes offline
+        working-directory: backend
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/go-contract-read-qualification.test.mjs
       - name: Compare Express and Go contracts with synthetic fixtures
         working-directory: backend
         env:
