@@ -57,7 +57,7 @@ jobs:
       - name: Test PostgreSQL custom-tags integration
         env:
           GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
-        run: go test -mod=readonly -tags=integration -run '^TestPostgresCustomTagsIntegration$' -count=1
+        run: go test -mod=readonly -tags=integration -run '^TestPostgres(CustomTags|Expenses)Integration$' -count=1
       - name: Vet
         run: go vet -mod=readonly ./...
 
