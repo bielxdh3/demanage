@@ -109,7 +109,7 @@ func TestCustomTagRollbackDoesNotReplayUnknownOrCommittedMutations(t *testing.T)
 		tag: syntheticCustomTag{
 			ID: "tag-express", UserID: "owner-synthetic-a", Scope: "expense", Name: "Casa", Color: "#112233",
 		},
-		outcome:   outcomeCommitted,
+		outcome: outcomeCommitted,
 	}
 	if err := applySyntheticTagWrite(gate, store, customTagsDomain, expressWriter, seed); err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestCustomTagRollbackDoesNotReplayUnknownOrCommittedMutations(t *testing.T)
 		tag: syntheticCustomTag{
 			ID: "tag-go-committed", UserID: "owner-synthetic-a", Scope: "expense", Name: "Transporte", Color: "#445566",
 		},
-		outcome:   outcomeCommitted,
+		outcome: outcomeCommitted,
 	}
 	if err := applySyntheticTagWrite(gate, store, customTagsDomain, goWriter, committed); err != nil {
 		t.Fatal(err)
@@ -133,7 +133,7 @@ func TestCustomTagRollbackDoesNotReplayUnknownOrCommittedMutations(t *testing.T)
 		tag: syntheticCustomTag{
 			ID: "tag-go-unknown", UserID: "owner-synthetic-b", Scope: "income", Name: "Reembolso", Color: "#AABBCC",
 		},
-		outcome:   outcomeUnknown,
+		outcome: outcomeUnknown,
 	}
 	if err := applySyntheticTagWrite(gate, store, customTagsDomain, goWriter, unknown); !errors.Is(err, errSyntheticOutcomeUnknown) {
 		t.Fatalf("unknown response error = %v", err)
