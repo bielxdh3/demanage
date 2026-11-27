@@ -29,12 +29,12 @@ jobs:
         env:
           POSTGRES_USER: demanage
           POSTGRES_PASSWORD: demanage
-          POSTGRES_DB: demanage
+          POSTGRES_DB: demanage_backend_test
           TZ: UTC
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U demanage -d demanage"
+          --health-cmd "pg_isready -U demanage -d demanage_backend_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -43,9 +43,9 @@ jobs:
         working-directory: backend
     env:
       TZ: UTC
-      DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage?schema=public
+      DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_backend_test?schema=public
       # Separate database: the drift check resets its shadow database.
-      SHADOW_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_shadow?schema=public
+      SHADOW_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_backend_shadow_test?schema=public
       JWT_SECRET: ci-secret-not-for-production
       APP_URL: http://localhost:5180
     steps:
@@ -71,7 +71,7 @@ jobs:
       - name: Create shadow database
         env:
           PGPASSWORD: demanage
-        run: psql -h localhost -U demanage -d demanage -v ON_ERROR_STOP=1 -c 'CREATE DATABASE demanage_shadow'
+        run: psql -h localhost -U demanage -d demanage_backend_test -v ON_ERROR_STOP=1 -c 'CREATE DATABASE demanage_backend_shadow_test'
       # Two migrations already applied in production share 20260821120000. Renaming
       # applied migrations breaks _prisma_migrations, so that one prefix is allowed.
       # See docs/database-migrations.md.
@@ -91,6 +91,8 @@ jobs:
         run: pnpm lint
       - name: Unit tests
         run: pnpm test:unit
+      - name: Disposable database safety guard test
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test scripts/disposable-database.test.mjs
       - name: Integration tests
         run: pnpm test:integration
       - name: Build

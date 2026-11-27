@@ -3,10 +3,19 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { createServer, type Server } from 'node:http';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import {
+  createReadQualificationRoutes,
+  readQualificationEnabled,
+  readQualificationSnapshot,
+  type ReadQualificationRoute,
+} from './go-contract-read-qualification';
+
 const databaseUrl = process.env.DATABASE_URL;
 const goBinary = process.env.GO_CONTRACT_BINARY;
 const ownerA = 'parity-owner-a';
 const ownerB = 'parity-owner-b';
+const readQualificationOwner = 'parity-read-qualification-owner';
+const readQualificationBank = 'parity-read-qualification-bank';
 const timestamp = new Date('2026-01-02T03:04:05.000Z');
 const contractNow = '2026-11-01T02:00:00.000Z';
 let prisma: (typeof import('../src/lib/prisma'))['prisma'] | undefined;
@@ -754,6 +763,83 @@ async function seedHistoryFixtures() {
   });
 }
 
+async function seedReadQualificationFixtures() {
+  const client = prisma;
+  assert.ok(client);
+  const snapshot = new Date(readQualificationSnapshot);
+  const createdAt = new Date('2026-10-20T00:00:00.000Z');
+
+  await client.user.create({
+    data: {
+      id: readQualificationOwner,
+      name: 'Read qualification owner',
+      email: 'parity-read-qualification@example.invalid',
+      passwordHash: 'synthetic-only',
+    },
+  });
+  await client.card.create({
+    data: {
+      id: 'parity-read-qualification-card',
+      userId: readQualificationOwner,
+      name: 'Read qualification card',
+      limit: 1000,
+      closingDay: 10,
+      expiresAt: new Date('2027-01-01T00:00:00.000Z'),
+      lastBillingProcessedAt: null,
+      createdAt,
+      updatedAt: createdAt,
+    },
+  });
+  await client.expense.create({
+    data: {
+      id: 'parity-read-qualification-expense',
+      userId: readQualificationOwner,
+      name: 'Read qualification expense',
+      amount: 1.23,
+      category: 'outro',
+      frequency: 'unica',
+      occurredAt: snapshot,
+      createdAt: snapshot,
+      updatedAt: snapshot,
+    },
+  });
+  await client.entry.create({
+    data: {
+      id: 'parity-read-qualification-entry',
+      userId: readQualificationOwner,
+      name: 'Read qualification entry',
+      amount: 4.56,
+      type: 'outro',
+      frequency: 'unica',
+      date: snapshot,
+      createdAt: snapshot,
+      updatedAt: snapshot,
+    },
+  });
+  await client.piggyBank.create({
+    data: {
+      id: readQualificationBank,
+      userId: readQualificationOwner,
+      name: 'Read qualification bank',
+      createdAt,
+      updatedAt: createdAt,
+    },
+  });
+  await client.piggyTransaction.create({
+    data: {
+      id: 'parity-read-qualification-transaction',
+      userId: readQualificationOwner,
+      piggyBankId: readQualificationBank,
+      type: 'deposit',
+      source: 'manual',
+      amount: 3.21,
+      date: createdAt,
+      expenseId: 'parity-read-qualification-expense',
+      createdAt,
+    },
+  });
+}
+
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
@@ -826,6 +912,10 @@ async function compare(path: string, token?: string) {
 }
 
 async function compareAtContractTime(path: string, token?: string) {
+  return withContractTime(() => compare(path, token));
+}
+
+async function withContractTime<T>(operation: () => Promise<T>) {
   const nativeDate = globalThis.Date;
   const fixedTime = nativeDate.parse(contractNow);
   globalThis.Date = new Proxy(nativeDate, {
@@ -835,7 +925,7 @@ async function compareAtContractTime(path: string, token?: string) {
       property === 'now' ? () => fixedTime : Reflect.get(target, property, receiver),
   });
   try {
-    return await compare(path, token);
+    return await operation();
   } finally {
     globalThis.Date = nativeDate;
   }
@@ -1230,6 +1320,14 @@ async function runContract() {
   await seedHistoryFixtures();
   await compareHistoryEndpoints(ownerAToken, ownerBToken);
 
+  if (readQualificationEnabled()) {
+    await seedReadQualificationFixtures();
+    await compareQualification(
+      signAuthToken(readQualificationOwner, 0),
+      createReadQualificationRoutes(readQualificationBank),
+    );
+  }
+
   console.log('Express and Go contract cases passed.');
 }
 
@@ -1414,14 +1512,9 @@ async function compareLoad(token: string) {
   assert.equal(go.errors, 0);
 }
 
-async function compareQualification(token: string) {
-  assert.equal(process.env.GITHUB_ACTIONS, 'true', 'qualification runs in hosted CI only');
-  const concurrency = 10;
-  const warmupRequestsPerImplementation = 100;
-  const requestsPerImplementation = 10_000;
-  const batches = 10;
-  const requestsPerBatch = requestsPerImplementation / batches;
-  const routes = [
+async function compareQualification(
+  token: string,
+  routes: Array<ReadQualificationRoute | { path: string; expectedIDs: string[] }> = [
     {
       path: '/custom-tags?scope=expense',
       expectedIDs: ['parity-a-expense-a', 'parity-a-expense-z'],
@@ -1434,36 +1527,52 @@ async function compareQualification(token: string) {
       path: '/entries',
       expectedIDs: ['parity-a-entry-salary', 'parity-a-entry-tagged'],
     },
-  ];
-
+  ],
+) {
+  assert.equal(process.env.GITHUB_ACTIONS, 'true', 'qualification runs in hosted CI only');
+  const concurrency = 10;
+  const warmupRequestsPerImplementation = 100;
+  const requestsPerImplementation = 10_000;
+  const batches = 10;
+  const requestsPerBatch = requestsPerImplementation / batches;
   const measure = async (
     baseUrl: string,
-    path: string,
-    expectedIDs: string[],
+    route: ReadQualificationRoute | { path: string; expectedIDs: string[] },
     requestCount: number,
   ) => {
     const durations: number[] = [];
     let errors = 0;
     let next = 0;
-    await Promise.all(Array.from({ length: concurrency }, async () => {
-      while (next < requestCount) {
-        const index = next++;
-        const started = performance.now();
-        try {
-          const response = await get(`${baseUrl}${path}`, token);
-          assert.equal(response.status, 200, `${path} status`);
-          assert.deepEqual(
-            (response.body as Array<{ id: string }>).map(({ id }) => id),
-            expectedIDs,
-            `${path} IDs`,
-          );
-        } catch {
-          errors++;
-        } finally {
-          durations[index] = performance.now() - started;
+    const run = async () => {
+      await Promise.all(Array.from({ length: concurrency }, async () => {
+        while (next < requestCount) {
+          const index = next++;
+          const started = performance.now();
+          try {
+            const response = await get(`${baseUrl}${route.path}`, token);
+            assert.equal(response.status, 200, `${route.path} status`);
+            if ('assertBody' in route) {
+              route.assertBody(response.body);
+            } else {
+              assert.deepEqual(
+                (response.body as Array<{ id: string }>).map(({ id }) => id),
+                route.expectedIDs,
+                `${route.path} IDs`,
+              );
+            }
+          } catch {
+            errors++;
+          } finally {
+            durations[index] = performance.now() - started;
+          }
         }
-      }
-    }));
+      }));
+    };
+    if ('contractTime' in route && route.contractTime && baseUrl === expressUrl) {
+      await withContractTime(run);
+    } else {
+      await run();
+    }
     return { durations, errors };
   };
 
@@ -1472,17 +1581,16 @@ async function compareQualification(token: string) {
     return sorted[Math.ceil(p * sorted.length) - 1] ?? 0;
   };
 
-  for (const { path, expectedIDs } of routes) {
+  for (const route of routes) {
+    const { path } = route;
     const expressWarmup = await measure(
       expressUrl,
-      path,
-      expectedIDs,
+      route,
       warmupRequestsPerImplementation,
     );
     const goWarmup = await measure(
       goUrl,
-      path,
-      expectedIDs,
+      route,
       warmupRequestsPerImplementation,
     );
     const expressDurations: number[] = [];
@@ -1494,14 +1602,12 @@ async function compareQualification(token: string) {
       const first = batch % 2 === 0 ? 'express' : 'go';
       const firstResult = await measure(
         first === 'express' ? expressUrl : goUrl,
-        path,
-        expectedIDs,
+        route,
         requestsPerBatch,
       );
       const secondResult = await measure(
         first === 'express' ? goUrl : expressUrl,
-        path,
-        expectedIDs,
+        route,
         requestsPerBatch,
       );
       if (first === 'express') {
