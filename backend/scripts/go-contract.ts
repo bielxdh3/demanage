@@ -83,6 +83,242 @@ async function seedFixtures() {
   });
 }
 
+async function seedFinancialFixtures() {
+  const client = prisma;
+  assert.ok(client);
+
+  await client.card.createMany({
+    data: [
+      {
+        id: 'parity-a-card-blue',
+        userId: ownerA,
+        name: 'Azul',
+        closingDay: 10,
+        createdAt: new Date('2026-02-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-card-green',
+        userId: ownerA,
+        name: 'Verde',
+        closingDay: 12,
+        createdAt: new Date('2026-02-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-02-01T00:00:00.000Z'),
+      },
+    ],
+  });
+  await client.expense.createMany({
+    data: [
+      {
+        id: 'parity-a-expense-full',
+        userId: ownerA,
+        customTagId: 'parity-a-expense-a',
+        name: 'Moradia',
+        amount: 1234.56,
+        category: 'outro',
+        frequency: 'mensal',
+        dueDay: 5,
+        startsAt: new Date('2026-02-01T00:00:00.000Z'),
+        endsAt: new Date('2026-12-31T23:59:59.000Z'),
+        paidForMonth: '2026-02',
+        paidAt: new Date('2026-02-02T10:00:00.000Z'),
+        notes: 'fixture with exact splits and payments',
+        createdAt: new Date('2026-02-10T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-10T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-expense-empty-relations',
+        userId: ownerA,
+        name: 'Avulsa',
+        amount: 0,
+        category: 'outro',
+        frequency: 'unica',
+        occurredAt: new Date('2026-01-15T12:00:00.000Z'),
+        createdAt: new Date('2026-02-09T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-09T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-b-expense-private',
+        userId: ownerB,
+        customTagId: 'parity-b-expense',
+        name: 'Privada',
+        amount: 9876.54,
+        category: 'outro',
+        frequency: 'mensal',
+        createdAt: new Date('2026-02-11T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-11T12:00:00.000Z'),
+      },
+    ],
+  });
+  await client.expenseSplit.createMany({
+    data: [
+      {
+        id: 'parity-a-split-blue',
+        expenseId: 'parity-a-expense-full',
+        kind: 'card',
+        cardId: 'parity-a-card-blue',
+        percent: 60,
+        amount: 740.74,
+        createdAt: new Date('2026-02-10T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-10T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-split-green',
+        expenseId: 'parity-a-expense-full',
+        kind: 'card',
+        cardId: 'parity-a-card-green',
+        percent: 20,
+        amount: 246.91,
+        createdAt: new Date('2026-02-10T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-10T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-split-pix',
+        expenseId: 'parity-a-expense-full',
+        kind: 'pix',
+        percent: 20,
+        amount: 246.91,
+        createdAt: new Date('2026-02-10T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-10T12:00:00.000Z'),
+      },
+    ],
+  });
+  await client.expensePayment.createMany({
+    data: [
+      {
+        id: 'parity-a-payment-1',
+        expenseId: 'parity-a-expense-full',
+        month: '2026-02',
+        amount: 5,
+        paidAt: new Date('2026-02-02T10:00:00.000Z'),
+        createdAt: new Date('2026-02-02T10:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-payment-2',
+        expenseId: 'parity-a-expense-full',
+        month: '2026-03',
+        amount: 123.45,
+        paidAt: new Date('2026-03-02T10:00:00.000Z'),
+        createdAt: new Date('2026-03-02T10:01:00.000Z'),
+      },
+      {
+        id: 'parity-a-payment-3',
+        expenseId: 'parity-a-expense-full',
+        month: '2026-04',
+        amount: 0.1,
+        paidAt: new Date('2026-04-02T10:00:00.000Z'),
+        createdAt: new Date('2026-04-02T10:01:00.000Z'),
+      },
+    ],
+  });
+
+  await client.entry.createMany({
+    data: [
+      {
+        id: 'parity-a-entry-salary',
+        userId: ownerA,
+        name: 'Salário',
+        amount: 9999999999.99,
+        type: 'salario',
+        frequency: 'mensal',
+        receiveDay: 5,
+        startsAt: new Date('2026-01-05T00:00:00.000Z'),
+        receiptHoldForMonth: '2026-12',
+        createdAt: new Date('2026-03-01T10:00:00.007Z'),
+        updatedAt: new Date('2026-03-01T10:00:00.007Z'),
+      },
+      {
+        id: 'parity-a-entry-tagged',
+        userId: ownerA,
+        customTagId: 'parity-a-income',
+        name: 'Extra',
+        notes: '',
+        amount: 0.1,
+        type: 'outro',
+        frequency: 'unica',
+        date: new Date('2026-02-20T12:00:00.000Z'),
+        createdAt: new Date('2026-02-20T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-20T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-b-entry-private',
+        userId: ownerB,
+        name: 'Privada',
+        amount: 3.33,
+        type: 'freelance',
+        frequency: 'unica',
+        date: new Date('2026-02-21T12:00:00.000Z'),
+        createdAt: new Date('2026-02-21T12:00:00.000Z'),
+        updatedAt: new Date('2026-02-21T12:00:00.000Z'),
+      },
+    ],
+  });
+  await client.salaryHold.createMany({
+    data: [
+      {
+        id: 'parity-a-hold-nov',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-11',
+        createdAt: new Date('2026-11-01T00:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-hold-dec',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-12',
+        createdAt: new Date('2026-12-01T00:00:00.000Z'),
+      },
+    ],
+  });
+  await client.salaryVersion.createMany({
+    data: [
+      {
+        id: 'parity-a-version-nov',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-11',
+        amount: 1234567890.12,
+        receiveDay: 4,
+        createdAt: new Date('2026-11-01T00:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-version-dec',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-12',
+        amount: 9999999999.99,
+        receiveDay: 5,
+        createdAt: new Date('2026-12-01T00:00:00.000Z'),
+      },
+    ],
+  });
+  await client.entryReceipt.createMany({
+    data: [
+      {
+        id: 'parity-a-receipt-oct',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-10',
+        amount: 0.1,
+        receivedAt: new Date('2026-11-05T12:00:00.000Z'),
+        createdAt: new Date('2026-11-04T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-receipt-nov',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-11',
+        amount: 0.2,
+        receivedAt: new Date('2026-11-06T12:00:00.000Z'),
+        createdAt: new Date('2026-11-05T12:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-receipt-dec',
+        entryId: 'parity-a-entry-salary',
+        month: '2026-12',
+        amount: 0.3,
+        receivedAt: new Date('2026-12-05T12:00:00.000Z'),
+        createdAt: new Date('2026-12-04T12:00:00.000Z'),
+      },
+    ],
+  });
+}
+
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
@@ -189,6 +425,116 @@ async function runContract() {
   assert.ok(signAuthToken);
   const ownerAToken = signAuthToken(ownerA, 0);
   const ownerBToken = signAuthToken(ownerB, 0);
+
+  const emptyExpenses = await compare('/expenses', ownerAToken);
+  assert.deepEqual(emptyExpenses.body, []);
+  const emptyEntries = await compare('/entries', ownerAToken);
+  assert.deepEqual(emptyEntries.body, []);
+
+  await seedFinancialFixtures();
+
+  const ownerAExpenses = await compare('/expenses', ownerAToken);
+  const ownerAExpenseRows = ownerAExpenses.body as Array<Record<string, unknown>>;
+  assert.deepEqual(ownerAExpenseRows.map(({ id }) => id), [
+    'parity-a-expense-full',
+    'parity-a-expense-empty-relations',
+  ]);
+  assert.equal(ownerAExpenseRows[0].amount, 1234.56);
+  assert.deepEqual(ownerAExpenseRows[0].customTag, {
+    id: 'parity-a-expense-a',
+    name: 'Alpha',
+    color: '#223344',
+  });
+  assert.deepEqual(ownerAExpenseRows[0].splits, [
+    {
+      id: 'parity-a-split-blue',
+      kind: 'card',
+      cardId: 'parity-a-card-blue',
+      percent: 60,
+      amount: 740.74,
+      cardName: 'Azul',
+    },
+    {
+      id: 'parity-a-split-green',
+      kind: 'card',
+      cardId: 'parity-a-card-green',
+      percent: 20,
+      amount: 246.91,
+      cardName: 'Verde',
+    },
+    {
+      id: 'parity-a-split-pix',
+      kind: 'pix',
+      cardId: null,
+      percent: 20,
+      amount: 246.91,
+      cardName: null,
+    },
+  ]);
+  assert.deepEqual(
+    (ownerAExpenseRows[0].payments as Array<Record<string, unknown>>).map(
+      ({ id, amount }) => ({ id, amount }),
+    ),
+    [
+      { id: 'parity-a-payment-1', amount: 5 },
+      { id: 'parity-a-payment-2', amount: 123.45 },
+      { id: 'parity-a-payment-3', amount: 0.1 },
+    ],
+  );
+  assert.deepEqual(ownerAExpenseRows[1].splits, []);
+  assert.deepEqual(ownerAExpenseRows[1].payments, []);
+  assert.equal(ownerAExpenseRows[1].cardId, null);
+  assert.equal(ownerAExpenseRows[1].dueDay, null);
+
+  const ownerBExpenses = await compare('/expenses', ownerBToken);
+  assert.deepEqual(
+    (ownerBExpenses.body as Array<{ id: string }>).map(({ id }) => id),
+    ['parity-b-expense-private'],
+  );
+
+  const ownerAEntries = await compare('/entries', ownerAToken);
+  const ownerAEntryRows = ownerAEntries.body as Array<Record<string, unknown>>;
+  assert.deepEqual(ownerAEntryRows.map(({ id }) => id), [
+    'parity-a-entry-salary',
+    'parity-a-entry-tagged',
+  ]);
+  assert.equal(ownerAEntryRows[0].amount, 9999999999.99);
+  assert.deepEqual(
+    (ownerAEntryRows[0].salaryVersions as Array<Record<string, unknown>>).map(
+      ({ month, amount, receiveDay }) => ({ month, amount, receiveDay }),
+    ),
+    [
+      { month: '2026-11', amount: 1234567890.12, receiveDay: 4 },
+      { month: '2026-12', amount: 9999999999.99, receiveDay: 5 },
+    ],
+  );
+  assert.deepEqual(
+    (ownerAEntryRows[0].receipts as Array<Record<string, unknown>>).map(
+      ({ month, amount }) => ({ month, amount }),
+    ),
+    [
+      { month: '2026-10', amount: 0.1 },
+      { month: '2026-11', amount: 0.2 },
+      { month: '2026-12', amount: 0.3 },
+    ],
+  );
+  assert.deepEqual(ownerAEntryRows[1].customTag, {
+    id: 'parity-a-income',
+    name: 'Salary extra',
+    color: '#334455',
+  });
+  assert.equal(ownerAEntryRows[1].notes, '');
+  assert.deepEqual(ownerAEntryRows[1].salaryHolds, []);
+  assert.deepEqual(ownerAEntryRows[1].salaryVersions, []);
+  assert.deepEqual(ownerAEntryRows[1].receipts, []);
+
+  const ownerBEntries = await compare('/entries', ownerBToken);
+  assert.deepEqual(
+    (ownerBEntries.body as Array<{ id: string }>).map(({ id }) => id),
+    ['parity-b-entry-private'],
+  );
+  assert.equal((await compare('/expenses')).status, 401);
+  assert.equal((await compare('/entries')).status, 401);
 
   await compare('/health');
   const ready = await compare('/ready');
