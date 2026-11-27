@@ -18,8 +18,10 @@ const serviceName = "demanage-backend"
 type databaseProbe func(context.Context) error
 
 type handlerOptions struct {
-	jwtKey    []byte
-	tagReader customTagRepository
+	jwtKey        []byte
+	tagReader     customTagRepository
+	expenseReader expenseListRepository
+	entryReader   entryListRepository
 }
 
 func main() {
@@ -31,8 +33,10 @@ func main() {
 	database := newPostgresDatabase(os.Getenv("DATABASE_URL"))
 	defer database.Close()
 	handler := newHandler(database.Probe, handlerOptions{
-		jwtKey:    []byte(jwtSecret),
-		tagReader: postgresCustomTagRepository{database: database},
+		jwtKey:        []byte(jwtSecret),
+		tagReader:     postgresCustomTagRepository{database: database},
+		expenseReader: postgresExpenseRepository{database: database},
+		entryReader:   postgresEntryRepository{database: database},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -49,6 +53,7 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 	mux := http.NewServeMux()
 	if len(options) > 0 {
 		registerCustomTags(mux, options[0].jwtKey, options[0].tagReader)
+		registerFinancialReads(mux, options[0].jwtKey, options[0].tagReader, options[0].expenseReader, options[0].entryReader)
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {

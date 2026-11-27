@@ -32,6 +32,10 @@ type customTagRepository interface {
 	ListCustomTags(context.Context, string, string) ([]customTag, error)
 }
 
+type userSessionVersionRepository interface {
+	FindUserSessionVersion(context.Context, string) (int64, bool, error)
+}
+
 type postgresCustomTagRepository struct {
 	database *postgresDatabase
 }
@@ -97,7 +101,7 @@ func (repository postgresCustomTagRepository) withPool(ctx context.Context, run 
 
 func registerCustomTags(mux *http.ServeMux, jwtKey []byte, repository customTagRepository) {
 	mux.HandleFunc("GET /custom-tags", func(w http.ResponseWriter, r *http.Request) {
-		userID, sessionVersion, ok := verifiedCustomTagIdentity(r, jwtKey)
+		userID, sessionVersion, ok := verifiedFinancialReadIdentity(r, jwtKey)
 		if !ok {
 			writeJSON(w, r, http.StatusUnauthorized, struct {
 				Error string `json:"error"`
@@ -108,12 +112,12 @@ func registerCustomTags(mux *http.ServeMux, jwtKey []byte, repository customTagR
 			writeInternalError(w, r)
 			return
 		}
-		storedVersion, exists, err := repository.FindUserSessionVersion(r.Context(), userID)
+		currentSession, err := financialSessionIsCurrent(r.Context(), repository, userID, sessionVersion)
 		if err != nil {
 			writeInternalError(w, r)
 			return
 		}
-		if !exists || storedVersion != sessionVersion {
+		if !currentSession {
 			writeJSON(w, r, http.StatusUnauthorized, struct {
 				Error string `json:"error"`
 			}{"Não autenticado"})
@@ -145,7 +149,7 @@ func registerCustomTags(mux *http.ServeMux, jwtKey []byte, repository customTagR
 	})
 }
 
-func verifiedCustomTagIdentity(r *http.Request, key []byte) (string, int64, bool) {
+func verifiedFinancialReadIdentity(r *http.Request, key []byte) (string, int64, bool) {
 	if len(key) == 0 {
 		return "", 0, false
 	}
@@ -175,6 +179,29 @@ func verifiedCustomTagIdentity(r *http.Request, key []byte) (string, int64, bool
 		return "", 0, false
 	}
 	return userID, version, true
+}
+
+func authenticatedFinancialReadUser(r *http.Request, key []byte, repository userSessionVersionRepository) (string, bool, error) {
+	userID, sessionVersion, ok := verifiedFinancialReadIdentity(r, key)
+	if !ok {
+		return "", false, nil
+	}
+	currentSession, err := financialSessionIsCurrent(r.Context(), repository, userID, sessionVersion)
+	if err != nil {
+		return "", false, err
+	}
+	return userID, currentSession, nil
+}
+
+func financialSessionIsCurrent(ctx context.Context, repository userSessionVersionRepository, userID string, sessionVersion int64) (bool, error) {
+	if repository == nil {
+		return false, errors.New("database is not configured")
+	}
+	storedVersion, exists, err := repository.FindUserSessionVersion(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return exists && storedVersion == sessionVersion, nil
 }
 
 func sessionVersionClaim(claims jwt.MapClaims) (int64, bool) {
