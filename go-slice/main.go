@@ -18,12 +18,14 @@ const serviceName = "demanage-backend"
 type databaseProbe func(context.Context) error
 
 type handlerOptions struct {
-	jwtKey          []byte
-	tagReader       customTagRepository
-	expenseReader   expenseListRepository
-	entryReader     entryListRepository
-	cardReader      cardListRepository
-	piggyBankReader piggyBankListRepository
+	jwtKey                  []byte
+	tagReader               customTagRepository
+	expenseReader           expenseListRepository
+	entryReader             entryListRepository
+	cardReader              cardListRepository
+	piggyBankReader         piggyBankListRepository
+	assetTransactionReader  assetTransactionListRepository
+	patrimonySettingsReader patrimonySettingsReader
 }
 
 func main() {
@@ -40,12 +42,14 @@ func main() {
 	database := newPostgresDatabase(os.Getenv("DATABASE_URL"))
 	defer database.Close()
 	handler := newHandler(database.Probe, handlerOptions{
-		jwtKey:          []byte(jwtSecret),
-		tagReader:       postgresCustomTagRepository{database: database},
-		expenseReader:   postgresExpenseRepository{database: database},
-		entryReader:     postgresEntryRepository{database: database},
-		cardReader:      postgresCardRepository{database: database, now: clock},
-		piggyBankReader: postgresPiggyBankRepository{database: database, now: clock},
+		jwtKey:                  []byte(jwtSecret),
+		tagReader:               postgresCustomTagRepository{database: database},
+		expenseReader:           postgresExpenseRepository{database: database},
+		entryReader:             postgresEntryRepository{database: database},
+		cardReader:              postgresCardRepository{database: database, now: clock},
+		piggyBankReader:         postgresPiggyBankRepository{database: database, now: clock},
+		assetTransactionReader:  postgresAssetTransactionRepository{database: database},
+		patrimonySettingsReader: postgresPatrimonySettingsRepository{database: database},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -71,6 +75,8 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 			options[0].cardReader,
 			options[0].piggyBankReader,
 		)
+		registerAssetTransactionReads(mux, options[0].jwtKey, options[0].tagReader, options[0].assetTransactionReader)
+		registerPatrimonySettings(mux, options[0].jwtKey, options[0].tagReader, options[0].patrimonySettingsReader)
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {
