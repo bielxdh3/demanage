@@ -816,6 +816,33 @@ async function seedReadQualificationFixtures() {
       updatedAt: snapshot,
     },
   });
+  await client.patrimonySettings.create({
+    data: {
+      id: 'parity-read-qualification-patrimony-settings',
+      userId: readQualificationOwner,
+      baseDate: new Date('2026-02-03T00:00:00.000Z'),
+      openingCashBrl: '1234.56',
+      createdAt,
+      updatedAt: createdAt,
+    },
+  });
+  await client.assetTransaction.create({
+    data: {
+      id: 'parity-read-qualification-asset-btc',
+      userId: readQualificationOwner,
+      asset: 'BTC',
+      type: 'BUY',
+      quantity: '1.25',
+      cashAmountBrl: '10.50',
+      feeAmountBrl: '0.50',
+      feePercent: null,
+      costBasisKnown: true,
+      date: snapshot,
+      note: 'Synthetic qualification fixture',
+      createdAt,
+      updatedAt: createdAt,
+    },
+  });
   await client.piggyBank.create({
     data: {
       id: readQualificationBank,
@@ -1583,6 +1610,21 @@ async function compareQualification(
 
   for (const route of routes) {
     const { path } = route;
+    const contract =
+      'contractTime' in route && route.contractTime
+        ? await withContractTime(() => compare(path, token))
+        : await compare(path, token);
+    assert.equal(contract.status, 200, `${path} contract status`);
+    if ('assertBody' in route) {
+      route.assertBody(contract.body);
+    } else {
+      assert.deepEqual(
+        (contract.body as Array<{ id: string }>).map(({ id }) => id),
+        route.expectedIDs,
+        `${path} contract IDs`,
+      );
+    }
+
     const expressWarmup = await measure(
       expressUrl,
       route,

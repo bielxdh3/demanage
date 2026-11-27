@@ -26,14 +26,6 @@ export function createReadQualificationRoutes(bankID: string): ReadQualification
 
   return [
     {
-      path: '/expenses',
-      assertBody: (body) => assertIDs(body, [expenseID]),
-    },
-    {
-      path: '/entries',
-      assertBody: (body) => assertIDs(body, [entryID]),
-    },
-    {
       path: '/cards',
       assertBody: (body) => assertIDs(body, ['parity-read-qualification-card']),
       contractTime: true,
@@ -66,6 +58,19 @@ export function createReadQualificationRoutes(bankID: string): ReadQualification
       path: `/piggy-banks/${bankID}/transactions`,
       assertBody: (body) =>
         assertIDs(body, ['parity-read-qualification-transaction']),
+    },
+    {
+      path: '/assets/BTC/transactions',
+      assertBody: (body) =>
+        assertIDs(body, ['parity-read-qualification-asset-btc']),
+    },
+    {
+      path: '/patrimony/settings',
+      assertBody: (body) =>
+        assert.deepEqual(body, {
+          baseDate: '2026-02-03',
+          openingCashBrl: '1234.56',
+        }),
     },
   ];
 }

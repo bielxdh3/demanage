@@ -7,3 +7,21 @@ The contract checks `/health`, successful `/ready`, authenticated expense and in
 Go's focused tests also check those stable headers with the Express-style JSON content type, ETag, and `X-Powered-By` response behavior. This contract job does not relax any existing CI gate.
 
 The dedicated hosted workflow runs `pnpm test:go-contract:qualify` after building the Go binary and applying migrations to `demanage_parity_test`. It retains the existing 100-request-per-implementation smoke at concurrency 10, then warms both implementations with 100 requests each at concurrency 10 and measures 10 sequential 1,000-request batches per implementation, alternating which implementation goes first. The qualification logs runner OS/architecture, p50, p95, error totals, and the fixed limit; it fails unless both error totals are zero and Go p95 is at most 1.10 times Express p95. These synthetic results qualify only this hosted runner and are not production performance claims. The previously verified PR #147 smoke (100 requests per implementation) reported p95 92.40 ms for Express and 20.13 ms for Go with zero errors; that bounded smoke is not a full benchmark or a general performance claim. `pnpm test:go-contract` runs only the parity cases.
+
+## Qualification modes and validation boundary
+
+`pnpm test:go-contract:qualify` is the existing default CI mode and continues to qualify `/custom-tags`, `/expenses`, and `/entries`. It does not enable the additional read mode. `pnpm test:go-contract:qualify:reads` is explicitly opt-in: it preserves those three cases and adds `/cards`, `/piggy-banks`, `/financial-history`, `/piggy-banks/cash-movements`, `/piggy-banks/:id/transactions`, `/assets/:asset/transactions`, and `/patrimony/settings`. The additional cases use a separate synthetic owner and deterministic fixtures; their Express/Go response contracts are checked before timing. They retain 100 warmup requests and 10,000 measured requests per implementation and route, concurrency 10, alternating 1,000-request batches, zero errors, and the Go p95 limit of 1.10 times Express p95.
+
+Run the opt-in mode only on an authorized synthetic runner with the same isolated `express-go-contract` setup: a Go binary built with `go_contract_test`, migrations applied to the loopback-only disposable `demanage_parity_test` database, and the synthetic environment below. The extra mode is not invoked by the current workflow, which remains unchanged; a separate authorized runner invocation is still required to produce its timing evidence. Local validation is limited to offline route-matrix tests and source checks. The hosted-only guard rejects ordinary local execution, and this task did not connect to a database or run the benchmark.
+
+```bash
+(cd go-slice && go build -mod=readonly -tags=go_contract_test -o "$RUNNER_TEMP/demanage-go-contract" .)
+(cd backend && \
+  GITHUB_ACTIONS=true \
+  DATABASE_URL=postgresql://demanage:demanage@localhost:5432/demanage_parity_test?sslmode=disable \
+  JWT_SECRET=hosted-contract-only-synthetic-secret-32-bytes \
+  NODE_ENV=test \
+  APP_URL=http://localhost:5180 \
+  GO_CONTRACT_BINARY="$RUNNER_TEMP/demanage-go-contract" \
+  pnpm test:go-contract:qualify:reads)
+```
