@@ -64,6 +64,10 @@ jobs:
         env:
           GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
         run: go test -mod=readonly -tags=integration -run '^TestPostgresEntriesProjectionIntegration$' -count=1 -v
+      - name: Test PostgreSQL financial-history projection integration
+        env:
+          GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
+        run: go test -mod=readonly -tags=integration -run '^TestPostgresFinancialHistoryProjectionIntegration$' -count=1 -v
 
   express-go-contract:
     runs-on: ubuntu-latest
