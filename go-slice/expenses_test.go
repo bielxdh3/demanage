@@ -44,7 +44,7 @@ func TestMoneyAndPercentageJSONStayExact(t *testing.T) {
 
 func TestExpenseJSONKeepsNullFieldsAndEmptyRelations(t *testing.T) {
 	value := expense{
-		ID:          "expense-zero",
+		ID:           "expense-zero",
 		UserID:      "owner-a",
 		Name:        "Sem valor",
 		Amount:      money(0),
@@ -53,8 +53,8 @@ func TestExpenseJSONKeepsNullFieldsAndEmptyRelations(t *testing.T) {
 		SystemOrigin: "manual",
 		CreatedAt:   "2026-02-05T06:07:08.009Z",
 		UpdatedAt:   "2026-02-05T06:07:08.009Z",
-		Splits:      []expenseSplit{},
-		Payments:    []expensePayment{},
+		Splits:       []expenseSplit{},
+		Payments:     []expensePayment{},
 	}
 
 	encoded, err := json.Marshal(value)

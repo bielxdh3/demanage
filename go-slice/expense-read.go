@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type expenseQueryer interface {
@@ -91,10 +90,11 @@ func scanExpense(row pgx.Row) (expense, error) {
 	); err != nil {
 		return expense{}, err
 	}
-	item.Amount, err = parseMoney(amount)
+	parsedAmount, err := parseMoney(amount)
 	if err != nil {
 		return expense{}, err
 	}
+	item.Amount = parsedAmount
 	item.CardID = textPointer(cardID)
 	item.CustomTagID = textPointer(customTagID)
 	if dueDay.Valid {

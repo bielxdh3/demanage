@@ -60,9 +60,9 @@ type expense struct {
 	SystemOrigin       string             `json:"systemOrigin"`
 	CreatedAt          string             `json:"createdAt"`
 	UpdatedAt          string             `json:"updatedAt"`
-	CustomTag          *expenseCustomTag  `json:"customTag"`
-	Splits             []expenseSplit     `json:"splits"`
-	Payments           []expensePayment   `json:"payments"`
+	CustomTag          *expenseCustomTag `json:"customTag"`
+	Splits             []expenseSplit    `json:"splits"`
+	Payments           []expensePayment  `json:"payments"`
 }
 
 func (value money) MarshalJSON() ([]byte, error) {
