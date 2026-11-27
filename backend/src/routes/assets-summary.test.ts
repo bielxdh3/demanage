@@ -77,9 +77,21 @@ test('GET /assets and GET /assets/:asset summarize BTC/USD with synthetic data a
   t.mock.method(
     prisma.assetTransaction,
     'findMany',
-    async ({ where }: Parameters<typeof prisma.assetTransaction.findMany>[0]) => {
-      const userId = where.userId ?? '';
-      const asset = where.asset ?? '';
+    async (args?: Parameters<typeof prisma.assetTransaction.findMany>[0]) => {
+      const userIdFilter = args?.where?.userId;
+      const assetFilter = args?.where?.asset;
+      if (userIdFilter !== OWNER_ID && userIdFilter !== OTHER_OWNER_ID) {
+        throw new Error(
+          `unexpected asset transaction owner filter: ${String(userIdFilter)}`,
+        );
+      }
+      if (assetFilter !== 'BTC' && assetFilter !== 'USD') {
+        throw new Error(
+          `unexpected asset transaction asset filter: ${String(assetFilter)}`,
+        );
+      }
+      const userId = userIdFilter;
+      const asset = assetFilter;
       queries.push({ userId, asset });
       return (userId === OWNER_ID && asset === 'BTC' ? [transaction()] : []) as never;
     },
@@ -104,7 +116,7 @@ test('GET /assets and GET /assets/:asset summarize BTC/USD with synthetic data a
     'fetch',
     async (
       input: Parameters<typeof globalThis.fetch>[0],
-      init: Parameters<typeof globalThis.fetch>[1],
+      init?: Parameters<typeof globalThis.fetch>[1],
     ) => {
       const url = String(input);
       if (url.startsWith('http://127.0.0.1:')) return localFetch(input, init);
