@@ -37,29 +37,29 @@ type expensePayment struct {
 }
 
 type expense struct {
-	ID                 string             `json:"id"`
-	UserID             string             `json:"userId"`
-	CardID             *string            `json:"cardId"`
-	CustomTagID        *string            `json:"customTagId"`
-	Name               string             `json:"name"`
-	Amount             money              `json:"amount"`
-	Category           string             `json:"category"`
-	Frequency          string             `json:"frequency"`
-	DueDay             *int32             `json:"dueDay"`
-	StartsAt           *string            `json:"startsAt"`
-	EndsAt             *string            `json:"endsAt"`
-	OccurredAt         *string            `json:"occurredAt"`
-	PaidForMonth       *string            `json:"paidForMonth"`
-	PaidAt             *string            `json:"paidAt"`
-	Notes              *string            `json:"notes"`
-	IsInvoice          bool               `json:"isInvoice"`
-	BillingPeriodStart *string            `json:"billingPeriodStart"`
-	BillingPeriodEnd   *string            `json:"billingPeriodEnd"`
-	ArchivedAt         *string            `json:"archivedAt"`
-	VoidedAt           *string            `json:"voidedAt"`
-	SystemOrigin       string             `json:"systemOrigin"`
-	CreatedAt          string             `json:"createdAt"`
-	UpdatedAt          string             `json:"updatedAt"`
+	ID                 string            `json:"id"`
+	UserID             string            `json:"userId"`
+	CardID             *string           `json:"cardId"`
+	CustomTagID        *string           `json:"customTagId"`
+	Name               string            `json:"name"`
+	Amount             money             `json:"amount"`
+	Category           string            `json:"category"`
+	Frequency          string            `json:"frequency"`
+	DueDay             *int32            `json:"dueDay"`
+	StartsAt           *string           `json:"startsAt"`
+	EndsAt             *string           `json:"endsAt"`
+	OccurredAt         *string           `json:"occurredAt"`
+	PaidForMonth       *string           `json:"paidForMonth"`
+	PaidAt             *string           `json:"paidAt"`
+	Notes              *string           `json:"notes"`
+	IsInvoice          bool              `json:"isInvoice"`
+	BillingPeriodStart *string           `json:"billingPeriodStart"`
+	BillingPeriodEnd   *string           `json:"billingPeriodEnd"`
+	ArchivedAt         *string           `json:"archivedAt"`
+	VoidedAt           *string           `json:"voidedAt"`
+	SystemOrigin       string            `json:"systemOrigin"`
+	CreatedAt          string            `json:"createdAt"`
+	UpdatedAt          string            `json:"updatedAt"`
 	CustomTag          *expenseCustomTag `json:"customTag"`
 	Splits             []expenseSplit    `json:"splits"`
 	Payments           []expensePayment  `json:"payments"`

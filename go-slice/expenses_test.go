@@ -7,9 +7,9 @@ import (
 
 func TestMoneyAndPercentageJSONStayExact(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		value money
-		want string
+		want  string
 	}{
 		{name: "zero amount", value: money(0), want: `0.00`},
 		{name: "fractional cents", value: money(1), want: `0.01`},
@@ -45,14 +45,14 @@ func TestMoneyAndPercentageJSONStayExact(t *testing.T) {
 func TestExpenseJSONKeepsNullFieldsAndEmptyRelations(t *testing.T) {
 	value := expense{
 		ID:           "expense-zero",
-		UserID:      "owner-a",
-		Name:        "Sem valor",
-		Amount:      money(0),
-		Category:    "outro",
-		Frequency:   "unica",
+		UserID:       "owner-a",
+		Name:         "Sem valor",
+		Amount:       money(0),
+		Category:     "outro",
+		Frequency:    "unica",
 		SystemOrigin: "manual",
-		CreatedAt:   "2026-02-05T06:07:08.009Z",
-		UpdatedAt:   "2026-02-05T06:07:08.009Z",
+		CreatedAt:    "2026-02-05T06:07:08.009Z",
+		UpdatedAt:    "2026-02-05T06:07:08.009Z",
 		Splits:       []expenseSplit{},
 		Payments:     []expensePayment{},
 	}
@@ -66,14 +66,14 @@ func TestExpenseJSONKeepsNullFieldsAndEmptyRelations(t *testing.T) {
 		t.Fatalf("decode expense JSON: %v", err)
 	}
 	for field, want := range map[string]string{
-		"amount":     `0.00`,
-		"cardId":     `null`,
+		"amount":      `0.00`,
+		"cardId":      `null`,
 		"customTagId": `null`,
-		"dueDay":     `null`,
-		"startsAt":   `null`,
-		"customTag":  `null`,
-		"splits":     `[]`,
-		"payments":   `[]`,
+		"dueDay":      `null`,
+		"startsAt":    `null`,
+		"customTag":   `null`,
+		"splits":      `[]`,
+		"payments":    `[]`,
 	} {
 		if string(wire[field]) != want {
 			t.Errorf("%s = %s, want %s", field, wire[field], want)
