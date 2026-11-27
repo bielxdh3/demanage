@@ -1,8 +1,13 @@
+CREATE TEMP TABLE "__asset_transaction_projection_anchor" ("id" INTEGER);
+
+CREATE TYPE "Asset" AS ENUM ('BTC', 'USD');
+CREATE TYPE "AssetTransactionType" AS ENUM ('BUY', 'SELL', 'MANUAL_ADJUSTMENT');
+
 CREATE TEMP TABLE "AssetTransaction" (
 	"id" TEXT NOT NULL PRIMARY KEY,
 	"userId" TEXT NOT NULL,
-	"asset" TEXT NOT NULL,
-	"type" TEXT NOT NULL,
+	"asset" "Asset" NOT NULL,
+	"type" "AssetTransactionType" NOT NULL,
 	"quantity" DECIMAL(30,12) NOT NULL,
 	"cashAmountBrl" DECIMAL(18,8) NOT NULL,
 	"feeAmountBrl" DECIMAL(18,8) NOT NULL,

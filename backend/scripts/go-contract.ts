@@ -319,6 +319,112 @@ async function seedFinancialFixtures() {
   });
 }
 
+async function seedPortfolioFixtures() {
+  const client = prisma;
+  assert.ok(client);
+
+  await client.patrimonySettings.createMany({
+    data: [
+      {
+        id: 'parity-a-patrimony-settings',
+        userId: ownerA,
+        baseDate: new Date('2026-02-03T00:00:00.000Z'),
+        openingCashBrl: '1234567890123456.78',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      {
+        id: 'parity-b-patrimony-settings',
+        userId: ownerB,
+        baseDate: new Date('2025-12-31T00:00:00.000Z'),
+        openingCashBrl: '0.00',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ],
+  });
+
+  await client.assetTransaction.createMany({
+    data: [
+      {
+        id: 'parity-a-asset-btc-same-date-old-created',
+        userId: ownerA,
+        asset: 'BTC',
+        type: 'SELL',
+        quantity: '0.000000000001',
+        cashAmountBrl: '0.10000000',
+        feeAmountBrl: '0.00000001',
+        feePercent: null,
+        costBasisKnown: false,
+        date: new Date('2026-11-20T09:30:00.123Z'),
+        note: null,
+        createdAt: new Date('2026-11-20T09:59:59.999Z'),
+        updatedAt: timestamp,
+      },
+      {
+        id: 'parity-a-asset-usd',
+        userId: ownerA,
+        asset: 'USD',
+        type: 'BUY',
+        quantity: '1.000000000000',
+        cashAmountBrl: '10.00000000',
+        feeAmountBrl: '0.00000000',
+        feePercent: null,
+        costBasisKnown: true,
+        date: new Date('2026-11-20T09:30:00.123Z'),
+        note: null,
+        createdAt: new Date('2026-11-20T10:00:00.000Z'),
+        updatedAt: timestamp,
+      },
+      {
+        id: 'parity-b-asset-btc-private',
+        userId: ownerB,
+        asset: 'BTC',
+        type: 'BUY',
+        quantity: '5.000000000000',
+        cashAmountBrl: '500.00000000',
+        feeAmountBrl: '0.00000000',
+        feePercent: null,
+        costBasisKnown: true,
+        date: new Date('2026-11-20T09:30:00.123Z'),
+        note: 'owner B only',
+        createdAt: new Date('2026-11-20T10:00:00.000Z'),
+        updatedAt: timestamp,
+      },
+      {
+        id: 'parity-a-asset-btc-date-new',
+        userId: ownerA,
+        asset: 'BTC',
+        type: 'BUY',
+        quantity: '1.234567890123',
+        cashAmountBrl: '9999999999.99999999',
+        feeAmountBrl: '0.00000000',
+        feePercent: null,
+        costBasisKnown: true,
+        date: new Date('2026-11-21T08:00:00.789Z'),
+        note: null,
+        createdAt: new Date('2026-11-20T08:00:00.001Z'),
+        updatedAt: timestamp,
+      },
+      {
+        id: 'parity-a-asset-btc-same-date-new-created',
+        userId: ownerA,
+        asset: 'BTC',
+        type: 'BUY',
+        quantity: '0.000000000001',
+        cashAmountBrl: '123.45678901',
+        feeAmountBrl: '0.00000001',
+        feePercent: '0.00000001',
+        costBasisKnown: true,
+        date: new Date('2026-11-20T09:30:00.123Z'),
+        note: 'precision',
+        createdAt: new Date('2026-11-20T10:00:00.456Z'),
+        updatedAt: timestamp,
+      },
+    ],
+  });
+}
+
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
@@ -430,8 +536,12 @@ async function runContract() {
   assert.deepEqual(emptyExpenses.body, []);
   const emptyEntries = await compare('/entries', ownerAToken);
   assert.deepEqual(emptyEntries.body, []);
+  assert.deepEqual((await compare('/assets/BTC/transactions', ownerAToken)).body, []);
+  assert.deepEqual((await compare('/assets/USD/transactions', ownerAToken)).body, []);
+  assert.equal((await compare('/patrimony/settings', ownerAToken)).body, null);
 
   await seedFinancialFixtures();
+  await seedPortfolioFixtures();
 
   const ownerAExpenses = await compare('/expenses', ownerAToken);
   const ownerAExpenseRows = ownerAExpenses.body as Array<Record<string, unknown>>;
@@ -535,6 +645,116 @@ async function runContract() {
   );
   assert.equal((await compare('/expenses')).status, 401);
   assert.equal((await compare('/entries')).status, 401);
+
+  const ownerABtcTransactions = await compare('/assets/btc/transactions', ownerAToken);
+  assert.deepEqual(ownerABtcTransactions.body, [
+    {
+      id: 'parity-a-asset-btc-date-new',
+      asset: 'BTC',
+      type: 'BUY',
+      quantity: '1.234567890123',
+      cashAmountBrl: '9999999999.99999999',
+      feeAmountBrl: '0',
+      feePercent: null,
+      costBasisKnown: true,
+      date: '2026-11-21T08:00:00.789Z',
+      note: null,
+      expenseId: null,
+      entryId: null,
+      createdAt: '2026-11-20T08:00:00.001Z',
+    },
+    {
+      id: 'parity-a-asset-btc-same-date-new-created',
+      asset: 'BTC',
+      type: 'BUY',
+      quantity: '0.000000000001',
+      cashAmountBrl: '123.45678901',
+      feeAmountBrl: '0.00000001',
+      feePercent: '0.00000001',
+      costBasisKnown: true,
+      date: '2026-11-20T09:30:00.123Z',
+      note: 'precision',
+      expenseId: null,
+      entryId: null,
+      createdAt: '2026-11-20T10:00:00.456Z',
+    },
+    {
+      id: 'parity-a-asset-btc-same-date-old-created',
+      asset: 'BTC',
+      type: 'SELL',
+      quantity: '0.000000000001',
+      cashAmountBrl: '0.1',
+      feeAmountBrl: '0.00000001',
+      feePercent: null,
+      costBasisKnown: false,
+      date: '2026-11-20T09:30:00.123Z',
+      note: null,
+      expenseId: null,
+      entryId: null,
+      createdAt: '2026-11-20T09:59:59.999Z',
+    },
+  ]);
+
+  const ownerAUsdTransactions = await compare('/assets/USD/transactions', ownerAToken);
+  assert.deepEqual(ownerAUsdTransactions.body, [
+    {
+      id: 'parity-a-asset-usd',
+      asset: 'USD',
+      type: 'BUY',
+      quantity: '1',
+      cashAmountBrl: '10',
+      feeAmountBrl: '0',
+      feePercent: null,
+      costBasisKnown: true,
+      date: '2026-11-20T09:30:00.123Z',
+      note: null,
+      expenseId: null,
+      entryId: null,
+      createdAt: '2026-11-20T10:00:00.000Z',
+    },
+  ]);
+
+  const ownerBBtcTransactions = await compare('/assets/BTC/transactions', ownerBToken);
+  assert.deepEqual(ownerBBtcTransactions.body, [
+    {
+      id: 'parity-b-asset-btc-private',
+      asset: 'BTC',
+      type: 'BUY',
+      quantity: '5',
+      cashAmountBrl: '500',
+      feeAmountBrl: '0',
+      feePercent: null,
+      costBasisKnown: true,
+      date: '2026-11-20T09:30:00.123Z',
+      note: 'owner B only',
+      expenseId: null,
+      entryId: null,
+      createdAt: '2026-11-20T10:00:00.000Z',
+    },
+  ]);
+
+  const ownerAPatrimonySettings = await compare('/patrimony/settings', ownerAToken);
+  assert.deepEqual(ownerAPatrimonySettings.body, {
+    baseDate: '2026-02-03',
+    openingCashBrl: '1234567890123456.78',
+  });
+  const ownerBPatrimonySettings = await compare('/patrimony/settings', ownerBToken);
+  assert.deepEqual(ownerBPatrimonySettings.body, {
+    baseDate: '2025-12-31',
+    openingCashBrl: '0',
+  });
+
+  const invalidAsset = await compare('/assets/ETH/transactions', ownerAToken);
+  assert.equal(invalidAsset.status, 400);
+  assert.deepEqual(invalidAsset.body, { error: 'Ativo inválido' });
+  assert.equal((await compare('/assets/BTC/transactions')).status, 401);
+  assert.equal((await compare('/patrimony/settings')).status, 401);
+
+  const client = prisma;
+  assert.ok(client);
+  await client.user.update({ where: { id: ownerA }, data: { sessionVersion: 1 } });
+  assert.equal((await compare('/assets/BTC/transactions', ownerAToken)).status, 401);
+  assert.equal((await compare('/patrimony/settings', ownerAToken)).status, 401);
 
   await compare('/health');
   const ready = await compare('/ready');

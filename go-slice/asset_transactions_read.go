@@ -101,5 +101,5 @@ const assetTransactionListQuery = `
 		"entryId",
 		to_char("createdAt", 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
 	FROM "AssetTransaction"
-	WHERE "userId" = $1 AND "asset" = $2
+	WHERE "userId" = $1 AND "asset" = $2::text::"Asset"
 	ORDER BY "date" DESC, "createdAt" DESC`
