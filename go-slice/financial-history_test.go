@@ -105,9 +105,9 @@ func TestFinancialHistoryRejectsInvalidSnapshotAndIndependentCursors(t *testing.
 	snapshot := "2026-11-26T20:00:00.000Z"
 	cursor := testFinancialHistoryCursor("2026-11-26T19:00:00.000Z", "income-1")
 	options, err := parseFinancialHistoryOptions(url.Values{
-		"snapshot":     {snapshot},
-		"limit":        {"2"},
-		"incomeCursor": {cursor},
+		"snapshot":      {snapshot},
+		"limit":         {"2"},
+		"incomeCursor":  {cursor},
 		"expenseCursor": {"end"},
 	}, now)
 	if err != nil {
