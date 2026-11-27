@@ -621,9 +621,27 @@ async function compareQualification(token: string) {
   const requestsPerImplementation = 10_000;
   const batches = 10;
   const requestsPerBatch = requestsPerImplementation / batches;
-  const expectedIDs = ['parity-a-expense-a', 'parity-a-expense-z'];
+  const routes = [
+    {
+      path: '/custom-tags?scope=expense',
+      expectedIDs: ['parity-a-expense-a', 'parity-a-expense-z'],
+    },
+    {
+      path: '/expenses',
+      expectedIDs: ['parity-a-expense-full', 'parity-a-expense-empty-relations'],
+    },
+    {
+      path: '/entries',
+      expectedIDs: ['parity-a-entry-salary', 'parity-a-entry-tagged'],
+    },
+  ];
 
-  const measure = async (baseUrl: string, requestCount: number) => {
+  const measure = async (
+    baseUrl: string,
+    path: string,
+    expectedIDs: string[],
+    requestCount: number,
+  ) => {
     const durations: number[] = [];
     let errors = 0;
     let next = 0;
@@ -632,11 +650,12 @@ async function compareQualification(token: string) {
         const index = next++;
         const started = performance.now();
         try {
-          const response = await get(`${baseUrl}/custom-tags?scope=expense`, token);
-          assert.equal(response.status, 200);
+          const response = await get(`${baseUrl}${path}`, token);
+          assert.equal(response.status, 200, `${path} status`);
           assert.deepEqual(
             (response.body as Array<{ id: string }>).map(({ id }) => id),
             expectedIDs,
+            `${path} IDs`,
           );
         } catch {
           errors++;
@@ -648,72 +667,114 @@ async function compareQualification(token: string) {
     return { durations, errors };
   };
 
-  const expressWarmup = await measure(expressUrl, warmupRequestsPerImplementation);
-  const goWarmup = await measure(goUrl, warmupRequestsPerImplementation);
-  const expressDurations: number[] = [];
-  const goDurations: number[] = [];
-  let expressErrors = expressWarmup.errors;
-  let goErrors = goWarmup.errors;
-
-  for (let batch = 0; batch < batches; batch++) {
-    const first = batch % 2 === 0 ? 'express' : 'go';
-    const firstResult = await measure(
-      first === 'express' ? expressUrl : goUrl,
-      requestsPerBatch,
-    );
-    const secondResult = await measure(
-      first === 'express' ? goUrl : expressUrl,
-      requestsPerBatch,
-    );
-    if (first === 'express') {
-      expressDurations.push(...firstResult.durations);
-      goDurations.push(...secondResult.durations);
-      expressErrors += firstResult.errors;
-      goErrors += secondResult.errors;
-    } else {
-      goDurations.push(...firstResult.durations);
-      expressDurations.push(...secondResult.durations);
-      goErrors += firstResult.errors;
-      expressErrors += secondResult.errors;
-    }
-  }
-
   const percentile = (durations: number[], p: number) => {
     const sorted = durations.toSorted((a, b) => a - b);
     return sorted[Math.ceil(p * sorted.length) - 1] ?? 0;
   };
-  const result = {
-    qualification: {
-      runner: {
-        os: process.env.RUNNER_OS ?? 'unknown',
-        arch: process.env.RUNNER_ARCH ?? 'unknown',
-      },
-      concurrency,
+
+  for (const { path, expectedIDs } of routes) {
+    const expressWarmup = await measure(
+      expressUrl,
+      path,
+      expectedIDs,
       warmupRequestsPerImplementation,
+    );
+    const goWarmup = await measure(
+      goUrl,
+      path,
+      expectedIDs,
+      warmupRequestsPerImplementation,
+    );
+    const expressDurations: number[] = [];
+    const goDurations: number[] = [];
+    let expressErrors = expressWarmup.errors;
+    let goErrors = goWarmup.errors;
+
+    for (let batch = 0; batch < batches; batch++) {
+      const first = batch % 2 === 0 ? 'express' : 'go';
+      const firstResult = await measure(
+        first === 'express' ? expressUrl : goUrl,
+        path,
+        expectedIDs,
+        requestsPerBatch,
+      );
+      const secondResult = await measure(
+        first === 'express' ? goUrl : expressUrl,
+        path,
+        expectedIDs,
+        requestsPerBatch,
+      );
+      if (first === 'express') {
+        expressDurations.push(...firstResult.durations);
+        goDurations.push(...secondResult.durations);
+        expressErrors += firstResult.errors;
+        goErrors += secondResult.errors;
+      } else {
+        goDurations.push(...firstResult.durations);
+        expressDurations.push(...secondResult.durations);
+        goErrors += firstResult.errors;
+        expressErrors += secondResult.errors;
+      }
+    }
+
+    const result = {
+      qualification: {
+        route: path,
+        runner: {
+          os: process.env.RUNNER_OS ?? 'unknown',
+          arch: process.env.RUNNER_ARCH ?? 'unknown',
+        },
+        concurrency,
+        warmupRequestsPerImplementation,
+        requestsPerImplementation,
+        requestsPerBatch,
+        batches,
+        order: 'alternating express/go then go/express; batches sequential',
+        limit: 'Go p95 <= 1.10 * Express p95; zero errors for both',
+        express: {
+          p50Ms: percentile(expressDurations, 0.5),
+          p95Ms: percentile(expressDurations, 0.95),
+          warmupSamples: expressWarmup.durations.length,
+          measuredSamples: expressDurations.length,
+          errors: expressErrors,
+        },
+        go: {
+          p50Ms: percentile(goDurations, 0.5),
+          p95Ms: percentile(goDurations, 0.95),
+          warmupSamples: goWarmup.durations.length,
+          measuredSamples: goDurations.length,
+          errors: goErrors,
+        },
+      },
+    };
+    console.log(JSON.stringify(result));
+    assert.equal(expressErrors, 0, `${path}: Express qualification requests must not fail`);
+    assert.equal(goErrors, 0, `${path}: Go qualification requests must not fail`);
+    assert.equal(
+      expressWarmup.durations.length,
+      warmupRequestsPerImplementation,
+      `${path}: Express warmup sample count`,
+    );
+    assert.equal(
+      goWarmup.durations.length,
+      warmupRequestsPerImplementation,
+      `${path}: Go warmup sample count`,
+    );
+    assert.equal(
+      expressDurations.length,
       requestsPerImplementation,
-      requestsPerBatch,
-      batches,
-      order: 'alternating express/go then go/express; batches sequential',
-      limit: 'Go p95 <= 1.10 * Express p95; zero errors for both',
-      express: {
-        p50Ms: percentile(expressDurations, 0.5),
-        p95Ms: percentile(expressDurations, 0.95),
-        errors: expressErrors,
-      },
-      go: {
-        p50Ms: percentile(goDurations, 0.5),
-        p95Ms: percentile(goDurations, 0.95),
-        errors: goErrors,
-      },
-    },
-  };
-  console.log(JSON.stringify(result));
-  assert.equal(expressErrors, 0, 'Express qualification requests must not fail');
-  assert.equal(goErrors, 0, 'Go qualification requests must not fail');
-  assert.ok(
-    result.qualification.go.p95Ms <= result.qualification.express.p95Ms * 1.1,
-    'Go p95 must be at most 1.10 times Express p95',
-  );
+      `${path}: Express measured sample count`,
+    );
+    assert.equal(
+      goDurations.length,
+      requestsPerImplementation,
+      `${path}: Go measured sample count`,
+    );
+    assert.ok(
+      result.qualification.go.p95Ms <= result.qualification.express.p95Ms * 1.1,
+      `${path}: Go p95 must be at most 1.10 times Express p95`,
+    );
+  }
 }
 
 async function main() {
