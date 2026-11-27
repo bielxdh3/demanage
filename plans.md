@@ -64,6 +64,7 @@ Checklist vivo das features. Agents devem **sempre** ler este arquivo e seguir a
 ## Infraestrutura — CI/CD
 
 - [x] **Pipeline de imagens e promoção** — Publicação de imagens imutáveis GHCR após CI da `master`, aprovação manual via ambiente GitHub `production`, agente outbound-only com backup, rollout seletivo e rollback da aplicação.
+- [x] **Paridade de contrato Express ↔ Go no CI hospedado** — Comparar `/health`, `/ready` e `GET /custom-tags`, incluindo cabeçalhos estáveis, com migrations Prisma e fixtures sintéticas em PostgreSQL descartável isolado; manter smoke de 100 requisições e qualificar carga sintética hospedada de 10 mil por implementação com limite p95 Go ≤ 1,10× Express, sem alegações sobre produção.
 - [ ] **`[HUMAN]` Ativação da produção** — Configurar no GitHub o ambiente protegido com required reviewer e variável `PRODUCTION_GATE_CONFIGURED=true`; autorizar GHCR; inventariar Compose efetivo do Debian e instalar o serviço systemd do agente. Sem esses passos, não há deploy automático.
 
 ## P1 — Segurança

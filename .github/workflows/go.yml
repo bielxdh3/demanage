@@ -1,0 +1,119 @@
+name: Go slice
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  go-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_USER: demanage
+          POSTGRES_PASSWORD: demanage
+          POSTGRES_DB: demanage_go_test
+          TZ: UTC
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U demanage -d demanage_go_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: go-slice
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - name: Check module files are tidy
+        run: go mod tidy -diff
+      - name: Verify downloaded module integrity
+        run: go mod verify
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            gofmt -d .
+            exit 1
+          fi
+      - name: Test synthetic health contracts
+        run: go test -mod=readonly ./...
+      - name: Test PostgreSQL custom-tags integration
+        env:
+          GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
+        run: go test -mod=readonly -tags=integration -run '^TestPostgresCustomTagsIntegration$' -count=1
+      - name: Vet
+        run: go vet -mod=readonly ./...
+
+  express-go-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_USER: demanage
+          POSTGRES_PASSWORD: demanage
+          POSTGRES_DB: demanage_parity_test
+          TZ: UTC
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U demanage -d demanage_parity_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - name: Build Go HTTP server
+        working-directory: go-slice
+        run: go build -mod=readonly -o "$RUNNER_TEMP/demanage-go-contract" .
+      - name: Validate disposable parity database target
+        env:
+          DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_parity_test?sslmode=disable
+        run: >-
+          python -c 'from urllib.parse import urlparse; import os; d = urlparse(os.environ["DATABASE_URL"]); assert d.hostname in ("localhost", "127.0.0.1", "::1") and d.port == 5432 and d.path == "/demanage_parity_test" and "schema" not in d.query'
+      - uses: ./.github/actions/setup-pnpm
+        with:
+          package-dir: backend
+      - name: Apply Prisma migrations to disposable parity database
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_parity_test?sslmode=disable
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+      - name: Compare Express and Go contracts with synthetic fixtures
+        working-directory: backend
+        env:
+          GITHUB_ACTIONS: 'true'
+          DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_parity_test?sslmode=disable
+          JWT_SECRET: hosted-contract-only-synthetic-secret-32-bytes
+          NODE_ENV: test
+          APP_URL: http://localhost:5180
+          GO_CONTRACT_BINARY: ${{ runner.temp }}/demanage-go-contract
+        run: pnpm test:go-contract:qualify

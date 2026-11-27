@@ -16,6 +16,9 @@
     "lint:fix": "eslint . --fix",
     "test:unit": "tsx --test \"src/**/*.test.ts\"",
     "test:integration": "tsx --test --test-concurrency=1 \"src/**/*.itest.ts\"",
+    "test:go-contract": "tsx scripts/go-contract.ts",
+    "test:go-contract:load": "tsx scripts/go-contract.ts --load",
+    "test:go-contract:qualify": "tsx scripts/go-contract.ts --load --qualify",
     "test": "pnpm run test:unit && pnpm run test:integration",
     "format": "prettier --write \"src/**/*.{ts,js}\""
   },
