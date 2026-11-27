@@ -58,6 +58,10 @@ jobs:
         env:
           GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
         run: go test -mod=readonly -tags=integration -run '^TestPostgres(CustomTags|Expenses)Integration$' -count=1
+      - name: Test PostgreSQL piggy banks projection integration
+        env:
+          GO_TEST_DATABASE_URL: postgresql://demanage:demanage@localhost:5432/demanage_go_test?sslmode=disable
+        run: go test -mod=readonly -tags=integration -run '^TestPostgresPiggyBanksProjectionIntegration$' -count=1 -v
       - name: Vet
         run: go vet -mod=readonly ./...
       - name: Test PostgreSQL entries projection integration

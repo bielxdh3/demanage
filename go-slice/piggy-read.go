@@ -35,25 +35,25 @@ func (value piggyCDIPercent) MarshalJSON() ([]byte, error) {
 }
 
 type piggyBankResponse struct {
-	ID                     string              `json:"id"`
-	Name                   string              `json:"name"`
-	GoalAmount             *money              `json:"goalAmount"`
-	TargetDate             *string             `json:"targetDate"`
-	MonthlyGoal            money               `json:"monthlyGoal"`
-	AutoDebitPaidThisMonth bool                `json:"autoDebitPaidThisMonth"`
-	AutoDebit              bool                `json:"autoDebit"`
-	AutoDebitDay           int32               `json:"autoDebitDay"`
-	IsEmergency            bool                `json:"isEmergency"`
-	YieldEnabled           bool                `json:"yieldEnabled"`
-	CDIPercent             piggyCDIPercent     `json:"cdiPercent"`
-	InterestAccruedThrough *string             `json:"interestAccruedThrough"`
-	ArchivedAt             *string             `json:"archivedAt"`
-	CompletedAt            *string             `json:"completedAt"`
-	Balance                money               `json:"balance"`
-	Progress               float64             `json:"progress"`
-	Remaining              money               `json:"remaining"`
-	CreatedAt              string              `json:"createdAt"`
-	UpdatedAt              string              `json:"updatedAt"`
+	ID                     string          `json:"id"`
+	Name                   string          `json:"name"`
+	GoalAmount             *money          `json:"goalAmount"`
+	TargetDate             *string         `json:"targetDate"`
+	MonthlyGoal            money           `json:"monthlyGoal"`
+	AutoDebitPaidThisMonth bool            `json:"autoDebitPaidThisMonth"`
+	AutoDebit              bool            `json:"autoDebit"`
+	AutoDebitDay           int32           `json:"autoDebitDay"`
+	IsEmergency            bool            `json:"isEmergency"`
+	YieldEnabled           bool            `json:"yieldEnabled"`
+	CDIPercent             piggyCDIPercent `json:"cdiPercent"`
+	InterestAccruedThrough *string         `json:"interestAccruedThrough"`
+	ArchivedAt             *string         `json:"archivedAt"`
+	CompletedAt            *string         `json:"completedAt"`
+	Balance                money           `json:"balance"`
+	Progress               float64         `json:"progress"`
+	Remaining              money           `json:"remaining"`
+	CreatedAt              string          `json:"createdAt"`
+	UpdatedAt              string          `json:"updatedAt"`
 }
 
 type piggyTransactionRecord struct {
