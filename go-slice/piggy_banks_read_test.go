@@ -53,8 +53,8 @@ func TestPiggyBankReadRoutesRequireRepositoryToMount(t *testing.T) {
 	}
 
 	configuredHandler := newHandler(func(context.Context) error { return nil }, handlerOptions{
-		jwtKey:         testJWTKey,
-		tagReader:      &fakeCustomTagRepository{userExists: true},
+		jwtKey:          testJWTKey,
+		tagReader:       &fakeCustomTagRepository{userExists: true},
 		piggyBankReader: &fakePiggyReadRepository{},
 	})
 	response := httptest.NewRecorder()
