@@ -79,9 +79,9 @@ func TestCardAndPiggyBankListRoutesAreMountedAndRequireAuthentication(t *testing
 	cardReader := &fakeCardListRepository{items: []cardReadProjection{}}
 	piggyBankReader := &fakePiggyBankListRepository{items: []piggyBankResponse{}}
 	handler := newHandler(func(context.Context) error { return nil }, handlerOptions{
-		jwtKey:          testJWTKey,
-		tagReader:       sessionReader,
-		cardReader:      cardReader,
+		jwtKey:              testJWTKey,
+		tagReader:           sessionReader,
+		cardReader:          cardReader,
 		piggyBankListReader: piggyBankReader,
 	})
 	token := signTestToken(t, jwt.SigningMethodHS256, map[string]any{
