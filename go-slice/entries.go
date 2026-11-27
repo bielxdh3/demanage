@@ -8,7 +8,7 @@ import (
 )
 
 // Prisma DateTime uses TIMESTAMP(3); format it as Date.toJSON's UTC millisecond string.
-const entryProjectionSQL = `
+const entryProjectionBaseSQL = `
 	SELECT jsonb_build_object(
 		'id', entry.id,
 		'userId', entry."userId",
@@ -77,6 +77,9 @@ const entryProjectionSQL = `
 		ON custom_tag.id = entry."customTagId"
 		AND custom_tag."userId" = entry."userId"
 		AND custom_tag.scope = 'income'
+	`
+
+const entryProjectionSQL = entryProjectionBaseSQL + `
 	WHERE entry."userId" = $1
 		AND entry."archivedAt" IS NULL
 		AND entry."systemOrigin" = 'manual'
@@ -94,7 +97,11 @@ type entryProjectionQueryer interface {
 }
 
 func listEntries(ctx context.Context, queryer entryProjectionQueryer, userID string) ([]json.RawMessage, error) {
-	rows, err := queryer.Query(ctx, entryProjectionSQL, userID)
+	return queryEntryProjections(ctx, queryer, entryProjectionSQL, userID)
+}
+
+func queryEntryProjections(ctx context.Context, queryer entryProjectionQueryer, query string, args ...any) ([]json.RawMessage, error) {
+	rows, err := queryer.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

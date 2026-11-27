@@ -73,3 +73,55 @@ func TestFinancialReadRoutesReturnArraysAndRequireAuthentication(t *testing.T) {
 		})
 	}
 }
+
+func TestCardAndPiggyBankListRoutesAreMountedAndRequireAuthentication(t *testing.T) {
+	sessionReader := &fakeCustomTagRepository{userExists: true}
+	cardReader := &fakeCardListRepository{items: []cardReadProjection{}}
+	piggyBankReader := &fakePiggyBankListRepository{items: []piggyBankResponse{}}
+	handler := newHandler(func(context.Context) error { return nil }, handlerOptions{
+		jwtKey:              testJWTKey,
+		tagReader:           sessionReader,
+		cardReader:          cardReader,
+		piggyBankListReader: piggyBankReader,
+	})
+	token := signTestToken(t, jwt.SigningMethodHS256, map[string]any{
+		"userId":         "owner-1",
+		"sessionVersion": 0,
+		"exp":            4102444800,
+	})
+
+	for _, path := range []string{"/cards", "/cards/", "/piggy-banks", "/piggy-banks/"} {
+		t.Run(path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, path, nil)
+			request.AddCookie(&http.Cookie{Name: authCookieName, Value: token})
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusOK || response.Body.String() != "[]" {
+				t.Fatalf("authenticated list response = %d %s, want 200 []", response.Code, response.Body.String())
+			}
+			assertExpressJSONHeaders(t, response)
+			if path == "/cards" || path == "/cards/" {
+				if cardReader.userID != "owner-1" {
+					t.Fatalf("card repository received owner %q, want owner-1", cardReader.userID)
+				}
+			} else if piggyBankReader.userID != "owner-1" {
+				t.Fatalf("piggy bank repository received owner %q, want owner-1", piggyBankReader.userID)
+			}
+
+			unauthenticated := httptest.NewRecorder()
+			handler.ServeHTTP(unauthenticated, httptest.NewRequest(http.MethodGet, path, nil))
+			if unauthenticated.Code != http.StatusUnauthorized {
+				t.Fatalf("missing-cookie status = %d, want 401", unauthenticated.Code)
+			}
+			assertExpressJSONHeaders(t, unauthenticated)
+		})
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/piggy-banks?includeArchived=true", nil)
+	request.AddCookie(&http.Cookie{Name: authCookieName, Value: token})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || !piggyBankReader.includeArchived {
+		t.Fatalf("mounted includeArchived route = %d %s, includeArchived=%t", response.Code, response.Body.String(), piggyBankReader.includeArchived)
+	}
+}

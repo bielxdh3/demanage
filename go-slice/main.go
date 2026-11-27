@@ -18,10 +18,16 @@ const serviceName = "demanage-backend"
 type databaseProbe func(context.Context) error
 
 type handlerOptions struct {
-	jwtKey        []byte
-	tagReader     customTagRepository
-	expenseReader expenseListRepository
-	entryReader   entryListRepository
+	jwtKey                  []byte
+	tagReader               customTagRepository
+	expenseReader           expenseListRepository
+	entryReader             entryListRepository
+	cardReader              cardListRepository
+	piggyBankListReader     piggyBankListRepository
+	piggyBankReadReader     piggyBankReadRepository
+	assetTransactionReader  assetTransactionListRepository
+	patrimonySettingsReader patrimonySettingsReader
+	financialHistoryReader  financialHistoryPageReader
 }
 
 func main() {
@@ -30,13 +36,24 @@ func main() {
 		fmt.Fprintln(os.Stderr, "JWT_SECRET must contain at least 32 bytes in production")
 		os.Exit(1)
 	}
+	clock, err := contractClock()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	database := newPostgresDatabase(os.Getenv("DATABASE_URL"))
 	defer database.Close()
 	handler := newHandler(database.Probe, handlerOptions{
-		jwtKey:        []byte(jwtSecret),
-		tagReader:     postgresCustomTagRepository{database: database},
-		expenseReader: postgresExpenseRepository{database: database},
-		entryReader:   postgresEntryRepository{database: database},
+		jwtKey:                  []byte(jwtSecret),
+		tagReader:               postgresCustomTagRepository{database: database},
+		expenseReader:           postgresExpenseRepository{database: database},
+		entryReader:             postgresEntryRepository{database: database},
+		cardReader:              postgresCardRepository{database: database, now: clock},
+		piggyBankListReader:     postgresPiggyBankRepository{database: database, now: clock},
+		piggyBankReadReader:     postgresPiggyBankReadRepository{database: database},
+		assetTransactionReader:  postgresAssetTransactionRepository{database: database},
+		patrimonySettingsReader: postgresPatrimonySettingsRepository{database: database},
+		financialHistoryReader:  postgresFinancialHistoryRepository{database: database},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -53,7 +70,25 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 	mux := http.NewServeMux()
 	if len(options) > 0 {
 		registerCustomTags(mux, options[0].jwtKey, options[0].tagReader)
-		registerFinancialReads(mux, options[0].jwtKey, options[0].tagReader, options[0].expenseReader, options[0].entryReader)
+		registerFinancialReads(
+			mux,
+			options[0].jwtKey,
+			options[0].tagReader,
+			options[0].expenseReader,
+			options[0].entryReader,
+			options[0].cardReader,
+			options[0].piggyBankListReader,
+		)
+		registerAssetTransactionReads(mux, options[0].jwtKey, options[0].tagReader, options[0].assetTransactionReader)
+		registerPatrimonySettings(mux, options[0].jwtKey, options[0].tagReader, options[0].patrimonySettingsReader)
+		if options[0].piggyBankReadReader != nil {
+			registerPiggyBankReadProjections(mux, options[0].jwtKey, options[0].tagReader, options[0].piggyBankReadReader)
+		}
+		if options[0].financialHistoryReader != nil {
+			financialHistory := financialHistoryHandler(options[0].jwtKey, options[0].tagReader, options[0].financialHistoryReader)
+			mux.HandleFunc("GET /financial-history", financialHistory)
+			mux.HandleFunc("GET /financial-history/{$}", financialHistory)
+		}
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {
