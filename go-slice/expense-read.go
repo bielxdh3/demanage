@@ -32,7 +32,11 @@ func (repository postgresExpenseRepository) ListExpenses(ctx context.Context, us
 }
 
 func queryExpenses(ctx context.Context, queryer expenseQueryer, userID string) ([]expense, error) {
-	rows, err := queryer.Query(ctx, expenseListQuery, userID)
+	return queryExpensesWithQuery(ctx, queryer, expenseListQuery, userID)
+}
+
+func queryExpensesWithQuery(ctx context.Context, queryer expenseQueryer, query string, args ...any) ([]expense, error) {
+	rows, err := queryer.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func textPointer(value pgtype.Text) *string {
 	return &result
 }
 
-const expenseListQuery = `
+const expenseProjectionBaseSQL = `
 	SELECT
 		e."id",
 		e."userId",
@@ -199,6 +203,9 @@ const expenseListQuery = `
 	FROM "Expense" AS e
 	LEFT JOIN "CustomTag" AS tag
 		ON tag."id" = e."customTagId" AND tag."userId" = e."userId" AND tag."scope" = 'expense'
+	`
+
+const expenseListQuery = expenseProjectionBaseSQL + `
 	WHERE e."userId" = $1
 		AND e."archivedAt" IS NULL
 		AND e."systemOrigin" = 'manual'

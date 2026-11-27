@@ -82,7 +82,7 @@ func TestCardAndPiggyBankListRoutesAreMountedAndRequireAuthentication(t *testing
 		jwtKey:          testJWTKey,
 		tagReader:       sessionReader,
 		cardReader:      cardReader,
-		piggyBankReader: piggyBankReader,
+		piggyBankListReader: piggyBankReader,
 	})
 	token := signTestToken(t, jwt.SigningMethodHS256, map[string]any{
 		"userId":         "owner-1",

@@ -606,6 +606,154 @@ async function seedPortfolioFixtures() {
   });
 }
 
+async function seedHistoryFixtures() {
+  const client = prisma;
+  assert.ok(client);
+  const snapshot = new Date('2026-11-25T12:00:00.000Z');
+  const older = new Date('2026-11-25T11:59:59.999Z');
+  const afterSnapshot = new Date('2026-11-25T12:00:00.001Z');
+  const linkedDate = new Date('2026-11-20T00:00:00.000Z');
+
+  await client.expense.createMany({
+    data: [
+      ...[
+        ['parity-history-expense-a', 9999999999.99, snapshot],
+        ['parity-history-expense-z', 0.1, snapshot],
+        ['parity-history-expense-m', 1.23, snapshot],
+        ['parity-history-expense-older', 0.3, older],
+        ['parity-history-expense-after', 7.89, afterSnapshot],
+      ].map(([id, amount, createdAt]) => ({
+        id: id as string,
+        userId: ownerA,
+        name: id as string,
+        amount: amount as number,
+        category: 'outro' as const,
+        frequency: 'unica' as const,
+        occurredAt: createdAt as Date,
+        createdAt: createdAt as Date,
+        updatedAt: createdAt as Date,
+      })),
+      {
+        id: 'zz-parity-history-expense-generated',
+        userId: ownerA,
+        name: 'Generated expense excluded from manual history',
+        amount: 88.88,
+        category: 'outro',
+        frequency: 'unica',
+        occurredAt: snapshot,
+        systemOrigin: 'piggy',
+        createdAt: snapshot,
+        updatedAt: snapshot,
+      },
+    ],
+  });
+  await client.entry.createMany({
+    data: [
+      ...[
+        ['parity-history-entry-a', 9999999999.99, snapshot],
+        ['parity-history-entry-z', 0.1, snapshot],
+        ['parity-history-entry-m', 2.34, snapshot],
+        ['parity-history-entry-older', 0.4, older],
+        ['parity-history-entry-after', 7.89, afterSnapshot],
+      ].map(([id, amount, createdAt]) => ({
+        id: id as string,
+        userId: ownerA,
+        name: id as string,
+        amount: amount as number,
+        type: 'outro' as const,
+        frequency: 'unica' as const,
+        date: createdAt as Date,
+        createdAt: createdAt as Date,
+        updatedAt: createdAt as Date,
+      })),
+      {
+        id: 'zz-parity-history-entry-generated',
+        userId: ownerA,
+        name: 'Generated entry excluded from manual history',
+        amount: 88.88,
+        type: 'outro',
+        frequency: 'unica',
+        date: snapshot,
+        systemOrigin: 'piggy',
+        createdAt: snapshot,
+        updatedAt: snapshot,
+      },
+    ],
+  });
+  await client.piggyBank.createMany({
+    data: [
+      {
+        id: 'parity-a-bank-history',
+        userId: ownerA,
+        name: 'Owner A history',
+        createdAt: linkedDate,
+        updatedAt: linkedDate,
+      },
+      {
+        id: 'parity-a-bank-empty',
+        userId: ownerA,
+        name: 'Owner A empty',
+        createdAt: linkedDate,
+        updatedAt: linkedDate,
+      },
+      {
+        id: 'parity-b-bank-private',
+        userId: ownerB,
+        name: 'Owner B private',
+        createdAt: linkedDate,
+        updatedAt: linkedDate,
+      },
+    ],
+  });
+  await client.piggyTransaction.createMany({
+    data: [
+      {
+        id: 'parity-a-piggy-linked-deposit',
+        piggyBankId: 'parity-a-bank-history',
+        userId: ownerA,
+        type: 'deposit',
+        source: 'manual',
+        amount: 0.1,
+        date: linkedDate,
+        expenseId: 'parity-a-expense-full',
+        createdAt: linkedDate,
+      },
+      {
+        id: 'parity-a-piggy-linked-withdraw',
+        piggyBankId: 'parity-a-bank-history',
+        userId: ownerA,
+        type: 'withdraw',
+        source: 'manual',
+        amount: 0.2,
+        date: new Date('2026-11-21T00:00:00.000Z'),
+        entryId: 'parity-a-entry-tagged',
+        createdAt: new Date('2026-11-21T00:00:00.000Z'),
+      },
+      {
+        id: 'parity-a-piggy-manual-unlinked',
+        piggyBankId: 'parity-a-bank-history',
+        userId: ownerA,
+        type: 'deposit',
+        source: 'manual',
+        amount: 0.3,
+        date: new Date('2026-11-22T00:00:00.000Z'),
+        createdAt: new Date('2026-11-22T00:00:00.000Z'),
+      },
+      {
+        id: 'parity-b-piggy-linked-deposit',
+        piggyBankId: 'parity-b-bank-private',
+        userId: ownerB,
+        type: 'deposit',
+        source: 'manual',
+        amount: 0.4,
+        date: linkedDate,
+        expenseId: 'parity-b-expense-private',
+        createdAt: linkedDate,
+      },
+    ],
+  });
+}
+
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
@@ -1076,9 +1224,159 @@ async function runContract() {
   assert.equal((await compare('/custom-tags', ownerAToken)).status, 400);
   assert.equal((await compare('/custom-tags?scope=unknown', ownerAToken)).status, 400);
 
-  console.log('Express and Go contract cases passed.');
   if (process.argv.includes('--load')) await compareLoad(ownerAToken);
   if (process.argv.includes('--qualify')) await compareQualification(ownerAToken);
+
+  await seedHistoryFixtures();
+  await compareHistoryEndpoints(ownerAToken, ownerBToken);
+
+  console.log('Express and Go contract cases passed.');
+}
+
+async function compareHistoryEndpoints(ownerAToken: string, ownerBToken: string) {
+  const cashMovements = await compare('/piggy-banks/cash-movements', ownerAToken);
+  assert.deepEqual(cashMovements.body, [
+    { type: 'deposit', amount: 0.1, date: '2026-11-20' },
+    { type: 'withdraw', amount: 0.2, date: '2026-11-21' },
+  ]);
+
+  const transactions = await compare(
+    '/piggy-banks/parity-a-bank-history/transactions',
+    ownerAToken,
+  );
+  const transactionRows = transactions.body as Array<Record<string, unknown>>;
+  assert.deepEqual(
+    transactionRows.map(({ id, source, amount, expenseId, entryId }) => ({
+      id,
+      source,
+      amount,
+      expenseId,
+      entryId,
+    })),
+    [
+      {
+        id: 'parity-a-piggy-manual-unlinked',
+        source: 'manual',
+        amount: 0.3,
+        expenseId: null,
+        entryId: null,
+      },
+      {
+        id: 'parity-a-piggy-linked-withdraw',
+        source: 'manual',
+        amount: 0.2,
+        expenseId: null,
+        entryId: 'parity-a-entry-tagged',
+      },
+      {
+        id: 'parity-a-piggy-linked-deposit',
+        source: 'manual',
+        amount: 0.1,
+        expenseId: 'parity-a-expense-full',
+        entryId: null,
+      },
+    ],
+  );
+
+  const emptyBank = await compare(
+    '/piggy-banks/parity-a-bank-empty/transactions',
+    ownerAToken,
+  );
+  assert.deepEqual(emptyBank.body, []);
+  assert.equal(
+    (await compare('/piggy-banks/parity-b-bank-private/transactions', ownerAToken)).status,
+    404,
+  );
+  assert.equal(
+    (await compare('/piggy-banks/parity-missing-bank/transactions', ownerAToken)).status,
+    404,
+  );
+  const ownerBCashMovements = await compare('/piggy-banks/cash-movements', ownerBToken);
+  assert.deepEqual(ownerBCashMovements.body, [
+    { type: 'deposit', amount: 0.4, date: '2026-11-20' },
+  ]);
+
+  for (const path of [
+    '/piggy-banks/cash-movements',
+    '/piggy-banks/parity-a-bank-history/transactions',
+    '/financial-history',
+  ]) {
+    assert.equal((await compare(path)).status, 401, `${path} requires auth`);
+  }
+
+  const snapshot = '2026-11-25T12:00:00.000Z';
+  const snapshotQuery = `snapshot=${encodeURIComponent(snapshot)}&limit=2`;
+  const firstPage = await compare(`/financial-history?${snapshotQuery}`, ownerAToken);
+  const firstBody = firstPage.body as Record<string, unknown>;
+  assert.equal(firstBody.snapshot, snapshot);
+  assert.deepEqual(
+    (firstBody.expenses as Array<Record<string, unknown>>).map(({ id, amount, createdAt }) => ({
+      id,
+      amount,
+      createdAt,
+    })),
+    [
+      { id: 'parity-history-expense-z', amount: 0.1, createdAt: snapshot },
+      { id: 'parity-history-expense-m', amount: 1.23, createdAt: snapshot },
+    ],
+  );
+  assert.deepEqual(
+    (firstBody.incomes as Array<Record<string, unknown>>).map(({ id, amount, createdAt }) => ({
+      id,
+      amount,
+      createdAt,
+    })),
+    [
+      { id: 'parity-history-entry-z', amount: 0.1, createdAt: snapshot },
+      { id: 'parity-history-entry-m', amount: 2.34, createdAt: snapshot },
+    ],
+  );
+  assert.equal(typeof firstBody.nextExpenseCursor, 'string');
+  assert.equal(typeof firstBody.nextIncomeCursor, 'string');
+  const expenseCursor = firstBody.nextExpenseCursor as string;
+  const incomeCursor = firstBody.nextIncomeCursor as string;
+
+  const nextPage = await compare(
+    `/financial-history?${snapshotQuery}&expenseCursor=${expenseCursor}&incomeCursor=${incomeCursor}`,
+    ownerAToken,
+  );
+  const nextBody = nextPage.body as Record<string, unknown>;
+  assert.deepEqual(
+    (nextBody.expenses as Array<Record<string, unknown>>).map(({ id, amount }) => ({ id, amount })),
+    [
+      { id: 'parity-history-expense-a', amount: 9999999999.99 },
+      { id: 'parity-history-expense-older', amount: 0.3 },
+    ],
+  );
+  assert.deepEqual(
+    (nextBody.incomes as Array<Record<string, unknown>>).map(({ id, amount }) => ({ id, amount })),
+    [
+      { id: 'parity-history-entry-a', amount: 9999999999.99 },
+      { id: 'parity-history-entry-older', amount: 0.4 },
+    ],
+  );
+  const returnedIDs = [
+    ...(firstBody.expenses as Array<{ id: string }>).map(({ id }) => id),
+    ...(firstBody.incomes as Array<{ id: string }>).map(({ id }) => id),
+    ...(nextBody.expenses as Array<{ id: string }>).map(({ id }) => id),
+    ...(nextBody.incomes as Array<{ id: string }>).map(({ id }) => id),
+  ];
+  assert.equal(returnedIDs.includes('parity-history-expense-after'), false);
+  assert.equal(returnedIDs.includes('parity-history-entry-after'), false);
+  assert.equal(returnedIDs.includes('zz-parity-history-expense-generated'), false);
+  assert.equal(returnedIDs.includes('zz-parity-history-entry-generated'), false);
+
+  const ended = await compare(
+    `/financial-history?${snapshotQuery}&expenseCursor=end&incomeCursor=end`,
+    ownerAToken,
+  );
+  assert.deepEqual(ended.body, {
+    snapshot,
+    nextExpenseCursor: null,
+    nextIncomeCursor: null,
+    expenses: [],
+    incomes: [],
+  });
 }
 
 async function compareLoad(token: string) {

@@ -23,9 +23,11 @@ type handlerOptions struct {
 	expenseReader           expenseListRepository
 	entryReader             entryListRepository
 	cardReader              cardListRepository
-	piggyBankReader         piggyBankListRepository
+	piggyBankListReader     piggyBankListRepository
+	piggyBankReadReader     piggyBankReadRepository
 	assetTransactionReader  assetTransactionListRepository
 	patrimonySettingsReader patrimonySettingsReader
+	financialHistoryReader  financialHistoryPageReader
 }
 
 func main() {
@@ -47,9 +49,11 @@ func main() {
 		expenseReader:           postgresExpenseRepository{database: database},
 		entryReader:             postgresEntryRepository{database: database},
 		cardReader:              postgresCardRepository{database: database, now: clock},
-		piggyBankReader:         postgresPiggyBankRepository{database: database, now: clock},
+		piggyBankListReader:     postgresPiggyBankRepository{database: database, now: clock},
+		piggyBankReadReader:     postgresPiggyBankReadRepository{database: database},
 		assetTransactionReader:  postgresAssetTransactionRepository{database: database},
 		patrimonySettingsReader: postgresPatrimonySettingsRepository{database: database},
+		financialHistoryReader:  postgresFinancialHistoryRepository{database: database},
 	})
 	server := &http.Server{
 		Addr:              "127.0.0.1:8888",
@@ -73,10 +77,18 @@ func newHandler(probe databaseProbe, options ...handlerOptions) http.Handler {
 			options[0].expenseReader,
 			options[0].entryReader,
 			options[0].cardReader,
-			options[0].piggyBankReader,
+			options[0].piggyBankListReader,
 		)
 		registerAssetTransactionReads(mux, options[0].jwtKey, options[0].tagReader, options[0].assetTransactionReader)
 		registerPatrimonySettings(mux, options[0].jwtKey, options[0].tagReader, options[0].patrimonySettingsReader)
+		if options[0].piggyBankReadReader != nil {
+			registerPiggyBankReadProjections(mux, options[0].jwtKey, options[0].tagReader, options[0].piggyBankReadReader)
+		}
+		if options[0].financialHistoryReader != nil {
+			financialHistory := financialHistoryHandler(options[0].jwtKey, options[0].tagReader, options[0].financialHistoryReader)
+			mux.HandleFunc("GET /financial-history", financialHistory)
+			mux.HandleFunc("GET /financial-history/{$}", financialHistory)
+		}
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, r, http.StatusOK, struct {
