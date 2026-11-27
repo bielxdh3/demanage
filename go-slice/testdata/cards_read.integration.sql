@@ -52,7 +52,7 @@ INSERT INTO "Card" (
   ('card-a-old', 'synthetic-owner-a', 'Old', 200.00, 5, 8, NULL, '2026-06-05 12:00:00', '2026-05-05 12:00:00', '2026-05-06 12:00:00', '2026-01-01 12:00:00', '2026-01-02 12:00:00'),
   ('card-a-new', 'synthetic-owner-a', 'New', NULL, 10, NULL, NULL, NULL, NULL, NULL, '2026-02-01 12:00:00', '2026-02-02 12:00:00'),
   ('card-a-archived', 'synthetic-owner-a', 'Archived', 500.00, 10, NULL, '2026-06-04 12:00:00', NULL, NULL, NULL, '2026-06-03 12:00:00', '2026-06-04 12:00:00'),
-  ('card-b', 'synthetic-owner-b', 'Other owner', 100.00, 5, NULL, NULL, NULL, NULL, '2026-05-05 12:00:00', '2026-05-06 12:00:00', '2026-03-01 12:00:00', '2026-03-02 12:00:00');
+  ('card-b', 'synthetic-owner-b', 'Other owner', 100.00, 5, NULL, NULL, NULL, '2026-05-05 12:00:00', '2026-05-06 12:00:00', '2026-03-01 12:00:00', '2026-03-02 12:00:00');
 INSERT INTO "Expense" (
   "id", "userId", "cardId", "amount", "isInvoice", "frequency", "dueDay",
   "startsAt", "occurredAt", "systemOrigin", "createdAt"
